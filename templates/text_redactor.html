@@ -1,0 +1,2022 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>editor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { height: 100%; }
+        body {
+            display: flex;
+            background: #f0f2f5;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .toggle-btn {
+            position: fixed; top: 50%; left: 0;
+            transform: translateY(-50%);
+            z-index: 200;
+            width: 32px; height: 60px;
+            background: #1e293b; color: #f1f5f9;
+            border: none; border-radius: 0 12px 12px 0;
+            font-size: 20px; font-weight: 300;
+            cursor: pointer;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), background 0.2s;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.1);
+        }
+        .toggle-btn:hover { background: #334155; }
+        .toggle-btn.open { left: 64px; }
+
+        .sidebar {
+            position: fixed; top: 50%; left: -64px;
+            transform: translateY(-50%);
+            width: 64px; height: 480px;
+            background: #1e293b;
+            display: flex; flex-direction: column;
+            align-items: center; padding: 12px 0; gap: 5px;
+            box-shadow: 2px 0 12px rgba(0, 0, 0, 0.15);
+            z-index: 100; border-radius: 0 16px 16px 0;
+            overflow: visible;
+            transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .sidebar.open { left: 0; }
+
+        .sidebar::before,
+        .sidebar::after {
+            content: ''; position: absolute; left: -40px;
+            width: 80px; height: 80px; background: #1e293b; z-index: -1;
+        }
+        .sidebar::before {
+            top: -40px;
+            mask-image: radial-gradient(circle at 100% 0%, transparent 40px, black 40px);
+            -webkit-mask-image: radial-gradient(circle at 100% 0%, transparent 40px, black 40px);
+        }
+        .sidebar::after {
+            bottom: -40px;
+            mask-image: radial-gradient(circle at 100% 100%, transparent 40px, black 40px);
+            -webkit-mask-image: radial-gradient(circle at 100% 100%, transparent 40px, black 40px);
+        }
+
+        .sidebar button {
+            width: 44px; height: 33px;
+            border: none; background: #334155; color: #f1f5f9;
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; border-radius: 0 10px 10px 0;
+            position: relative; z-index: 1;
+            padding: 0;
+            transition: background 0.15s, transform 0.3s ease;
+        }
+        .sidebar button:hover { background: #475569; transform: rotate(15deg); }
+        .sidebar button:active { background: #0f172a; transform: scale(0.92) rotate(15deg); }
+
+        .sidebar button svg,
+        .sidebar button img {
+            width: 20px; height: 20px; display: block; pointer-events: none;
+        }
+        .sidebar button.icon-btn { background: #334155; }
+        .sidebar button.icon-btn:hover { background: #475569; }
+
+        .sidebar button img.icon-white {
+            filter: brightness(0) invert(1);
+        }
+
+        .main-area {
+            margin-left: 0; width: 100%; height: 100vh;
+            display: flex; align-items: stretch;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+                        width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .main-area.shifted {
+            margin-left: 64px;
+            width: calc(100% - 64px);
+        }
+
+        .editor-container {
+            width: 100%; height: 100%;
+            padding: 20px 30px;
+            background: #f8fafc;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        #editor {
+            width: 100%; height: 100%;
+            border: none; outline: none;
+            font-size: 18px; font-family: inherit;
+            color: #0f172a; line-height: 1.6;
+            background: transparent; resize: none;
+            overflow-y: auto;
+            white-space: pre-wrap; word-wrap: break-word;
+        }
+        #editor:empty::before {
+            content: 'Введите текст...';
+            color: #94a3b8;
+        }
+        #editor:focus:empty::before { content: ''; }
+
+        .floating-toolbar {
+            position: fixed; background: #1e293b;
+            padding: 8px 14px; border-radius: 16px;
+            display: flex; gap: 6px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+            z-index: 300; opacity: 0;
+            transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none; align-items: center;
+            transform: scale(0.95) translateY(4px);
+            top: 0; left: 0;
+        }
+        .floating-toolbar.show {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+        }
+        .floating-toolbar button {
+            background: transparent; border: none; color: #f1f5f9;
+            font-size: 18px; padding: 6px 10px; border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.15s;
+            font-family: inherit; line-height: 1;
+            min-width: 36px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .floating-toolbar button:hover { background: #334155; transform: scale(1.05); }
+        .floating-toolbar button:active { background: #0f172a; transform: scale(0.92); }
+        .floating-toolbar button.active { background: #3b82f6; color: white; }
+        .floating-toolbar button svg,
+        .floating-toolbar button img {
+            width: 20px; height: 20px; display: block; pointer-events: none;
+        }
+        .floating-toolbar button img.icon-white {
+            filter: brightness(0) invert(1);
+        }
+        .floating-toolbar .divider {
+            width: 1px; height: 28px; background: #475569; margin: 0 4px;
+        }
+        .floating-toolbar .tool-label {
+            color: #94a3b8; font-size: 11px; font-weight: 500;
+            letter-spacing: 0.5px; text-transform: uppercase;
+            padding-right: 4px;
+        }
+
+        .context-menu {
+            position: fixed;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+            padding: 6px;
+            z-index: 500;
+            min-width: 230px;
+            opacity: 0;
+            transform: scale(0.95) translateY(-4px);
+            pointer-events: none;
+            transition: opacity 0.15s ease, transform 0.15s ease;
+        }
+        .context-menu.show {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+            pointer-events: auto;
+        }
+        .context-menu .menu-title {
+            font-size: 11px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 6px 10px 4px;
+        }
+        .context-menu button {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #0f172a;
+            font-size: 14px;
+            font-family: inherit;
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: background 0.12s;
+        }
+        .context-menu button:hover { background: #f1f5f9; }
+        .context-menu button:active { background: #e2e8f0; }
+        .context-menu button.danger { color: #ef4444; }
+        .context-menu button.danger:hover { background: #fef2f2; }
+
+        .context-menu .menu-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .context-menu .menu-icon img,
+        .context-menu .menu-icon svg {
+            width: 18px;
+            height: 18px;
+            display: block;
+            filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-rotate(190deg) brightness(95%) contrast(95%);
+        }
+        .context-menu button.danger .menu-icon svg {
+            filter: brightness(0) saturate(100%) invert(36%) sepia(90%) saturate(3000%) hue-rotate(340deg) brightness(100%) contrast(95%);
+        }
+
+        .context-menu .menu-sep {
+            height: 1px;
+            background: #e2e8f0;
+            margin: 4px 6px;
+        }
+
+        .inserted-image {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 4px 0;
+            display: block;
+            cursor: pointer;
+            transition: box-shadow 0.15s;
+        }
+        .inserted-image.selected {
+            box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.3);
+        }
+
+        .inserted-video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin: 4px 0;
+            display: block;
+            cursor: pointer;
+            transition: box-shadow 0.15s;
+        }
+        .inserted-video.selected {
+            box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.3);
+        }
+
+        .inserted-file {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #e2e8f0;
+            color: #0f172a;
+            padding: 6px 12px;
+            border-radius: 8px;
+            margin: 2px 0;
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            border: 1px solid #cbd5e1;
+            transition: background 0.15s, box-shadow 0.15s;
+            user-select: none;
+        }
+        .inserted-file:hover { background: #cbd5e1; }
+        .inserted-file.selected {
+            box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.3);
+            background: #dbeafe;
+        }
+        .inserted-file .file-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .inserted-file .file-icon img {
+            width: 20px;
+            height: 20px;
+            display: block;
+            filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-rotate(190deg) brightness(95%) contrast(95%);
+        }
+        .inserted-file .file-name { font-weight: 600; }
+        .inserted-file .file-size { color: #64748b; font-size: 12px; }
+
+        .resize-handle {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: #1e293b;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: nw-resize;
+            z-index: 999;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            border: 2px solid #ffffff;
+            transition: transform 0.1s, background 0.15s;
+            user-select: none;
+            pointer-events: auto;
+        }
+        .resize-handle:hover {
+            background: #3b82f6;
+            transform: scale(1.1);
+        }
+        .resize-handle:active {
+            background: #2563eb;
+            transform: scale(0.95);
+        }
+        .resize-handle svg,
+        .resize-handle img {
+            width: 18px;
+            height: 18px;
+            display: block;
+            pointer-events: none;
+        }
+        .resize-handle img {
+            filter: brightness(0) invert(1);
+        }
+
+        .align-handle {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: #1e293b;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            border: 2px solid #ffffff;
+            transition: transform 0.1s, background 0.15s;
+            user-select: none;
+            pointer-events: auto;
+        }
+        .align-handle:hover {
+            background: #3b82f6;
+            transform: scale(1.1);
+        }
+        .align-handle:active {
+            background: #2563eb;
+            transform: scale(0.95);
+        }
+        .align-handle svg,
+        .align-handle img {
+            width: 18px;
+            height: 18px;
+            display: block;
+            pointer-events: none;
+        }
+        .align-handle img {
+            filter: brightness(0) invert(1);
+        }
+
+        .delete-handle {
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            background: #ef4444;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 999;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            border: 2px solid #ffffff;
+            transition: transform 0.1s, background 0.15s;
+            user-select: none;
+            pointer-events: auto;
+        }
+        .delete-handle:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        .delete-handle:active {
+            background: #b91c1c;
+            transform: scale(0.95);
+        }
+        .delete-handle svg,
+        .delete-handle img {
+            width: 18px;
+            height: 18px;
+            display: block;
+            pointer-events: none;
+        }
+        .delete-handle img {
+            filter: brightness(0) invert(1);
+        }
+
+        .drop-indicator {
+            position: fixed;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #3b82f6;
+            z-index: 1000;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s;
+            box-shadow: 0 0 8px rgba(59,130,246,0.8);
+        }
+        .drop-indicator.show {
+            opacity: 1;
+        }
+        .drop-indicator::before {
+            content: '';
+            position: absolute;
+            left: -4px;
+            top: -4px;
+            width: 11px;
+            height: 11px;
+            background: #3b82f6;
+            border-radius: 50%;
+        }
+
+        .drag-preview {
+            position: fixed;
+            z-index: 1001;
+            pointer-events: none;
+            opacity: 0.75;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+            max-width: 200px;
+            max-height: 150px;
+            object-fit: contain;
+            border: 2px dashed #3b82f6;
+            background: #f8fafc;
+            display: none;
+        }
+
+        .drag-preview.show {
+            display: block;
+        }
+
+        .inserted-table {
+            border-collapse: collapse;
+            margin: 12px 0;
+            width: auto;
+            min-width: 200px;
+            background: #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+            position: relative;
+        }
+        .inserted-table td,
+        .inserted-table th {
+            border: 1px solid #cbd5e1;
+            padding: 8px 12px;
+            min-width: 60px;
+            min-height: 24px;
+            font-size: 15px;
+            color: #0f172a;
+            vertical-align: top;
+            outline: none;
+            position: relative;
+        }
+        .inserted-table td:focus,
+        .inserted-table th:focus {
+            background: #eff6ff;
+            box-shadow: inset 0 0 0 2px #3b82f6;
+        }
+        .inserted-table tr:first-child td,
+        .inserted-table tr:first-child th {
+            background: #f1f5f9;
+            font-weight: 600;
+        }
+
+        .table-add-col,
+        .table-add-row {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: #1e293b;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 998;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            font-size: 18px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0;
+            transition: transform 0.1s, background 0.15s;
+            user-select: none;
+        }
+        .table-add-col:hover,
+        .table-add-row:hover {
+            background: #3b82f6;
+            transform: scale(1.12);
+        }
+        .table-add-col:active,
+        .table-add-row:active {
+            background: #2563eb;
+            transform: scale(0.95);
+        }
+        .table-add-col.show,
+        .table-add-row.show {
+            display: flex;
+        }
+        .table-add-col::before {
+            content: '+';
+            transform: translateY(-1px);
+        }
+        .table-add-row::before {
+            content: '+';
+            transform: translateY(-1px);
+        }
+
+        .table-delete-handle {
+            position: absolute;
+            width: 26px;
+            height: 26px;
+            background: #ef4444;
+            color: #ffffff;
+            border: 2px solid #ffffff;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 998;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.35);
+            padding: 0;
+            transition: transform 0.1s, background 0.15s;
+            user-select: none;
+        }
+        .table-delete-handle:hover {
+            background: #dc2626;
+            transform: scale(1.12);
+        }
+        .table-delete-handle:active {
+            background: #b91c1c;
+            transform: scale(0.95);
+        }
+        .table-delete-handle.show {
+            display: flex;
+        }
+        .table-delete-handle svg,
+        .table-delete-handle img {
+            width: 16px;
+            height: 16px;
+            display: block;
+            pointer-events: none;
+        }
+        .table-delete-handle img {
+            filter: brightness(0) invert(1);
+        }
+
+        @media (max-width: 600px) {
+            .sidebar { width: 54px; height: 400px; padding: 10px 0; gap: 4px; left: -54px; }
+            .sidebar.open { left: 0; }
+            .toggle-btn.open { left: 54px; }
+            .sidebar button { width: 38px; height: 28px; }
+            .sidebar button svg,
+            .sidebar button img { width: 17px; height: 17px; }
+            .main-area.shifted { margin-left: 54px; width: calc(100% - 54px); }
+            .floating-toolbar { padding: 6px 10px; gap: 4px; }
+            .floating-toolbar button { font-size: 15px; padding: 4px 7px; min-width: 30px; }
+            .floating-toolbar button svg,
+            .floating-toolbar button img { width: 17px; height: 17px; }
+            .floating-toolbar .tool-label { font-size: 9px; }
+            .editor-container { padding: 16px 20px; }
+            #editor { font-size: 16px; }
+        }
+
+        @media (max-width: 420px) {
+            .sidebar { width: 44px; height: 360px; padding: 8px 0; gap: 3px; left: -44px; }
+            .sidebar.open { left: 0; }
+            .toggle-btn.open { left: 44px; }
+            .sidebar button { width: 32px; height: 24px; }
+            .sidebar button svg,
+            .sidebar button img { width: 14px; height: 14px; }
+            .main-area.shifted { margin-left: 44px; width: calc(100% - 44px); }
+            .floating-toolbar { padding: 5px 8px; gap: 2px; border-radius: 12px; }
+            .floating-toolbar button { font-size: 13px; padding: 3px 5px; min-width: 26px; }
+            .floating-toolbar button svg,
+            .floating-toolbar button img { width: 14px; height: 14px; }
+            .floating-toolbar .tool-label { font-size: 8px; padding-right: 2px; }
+            .floating-toolbar .divider { height: 22px; margin: 0 2px; }
+            .editor-container { padding: 12px 14px; }
+            #editor { font-size: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="toggle-btn" id="toggleBtn" title="Открыть панель">›</button>
+
+    <aside class="sidebar" id="sidebar">
+        <button class="icon-btn" title="Большая" data-action="larger">
+            <img src="/data/type.svg" alt="A" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Жирная" data-action="bold">
+            <img src="/data/bold.svg" alt="B" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Маленькая" data-action="smaller">
+            <img src="/data/baseline.svg" alt="a" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Подчёркнутый" data-action="underline">
+            <img src="/data/external-link.svg" alt="U" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Зачёркнутый" data-action="strikethrough">
+            <img src="/data/baseline.svg" alt="S" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Таблица" data-action="table">
+            <img src="/data/table.svg" alt="T" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Маркер" data-action="highlight">
+            <img src="/data/marker.svg" alt="маркер" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Код" data-action="code">
+            <img src="/data/file-text.svg" alt="&lt;/&gt;" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Ссылка" data-action="link">
+            <img src="/data/external-link.svg" alt="ссылка" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Изображение" data-action="image">
+            <img src="/data/image.svg" alt="изображение" class="icon-white" />
+        </button>
+        <button class="icon-btn" title="Файл" data-action="file">
+            <img src="/data/file-text.svg" alt="файл" class="icon-white" />
+        </button>
+    </aside>
+
+    <div class="main-area" id="mainArea">
+        <div class="editor-container" id="editorContainer">
+            <div id="editor" contenteditable="true"></div>
+        </div>
+    </div>
+
+    <div class="floating-toolbar" id="floatingToolbar">
+        <span class="tool-label">Формат</span>
+        <button data-action="bold" title="Жирный">
+            <img src="/data/bold.svg" alt="B" class="icon-white" />
+        </button>
+        <button data-action="italic" title="Курсив">
+            <img src="/data/type.svg" alt="I" class="icon-white" />
+        </button>
+        <button data-action="underline" title="Подчёркнутый">
+            <img src="/data/external-link.svg" alt="U" class="icon-white" />
+        </button>
+        <button data-action="strikethrough" title="Зачёркнутый">
+            <img src="/data/baseline.svg" alt="S" class="icon-white" />
+        </button>
+        <div class="divider"></div>
+        <button data-action="uppercase" title="Заглавные">Aa</button>
+        <button data-action="lowercase" title="Строчные">aA</button>
+        <div class="divider"></div>
+        <button data-action="code" title="Код">
+            <img src="/data/file-text.svg" alt="&lt;/&gt;" class="icon-white" />
+        </button>
+        <button data-action="highlight" title="Маркер">
+            <img src="/data/marker.svg" alt="маркер" class="icon-white" />
+        </button>
+    </div>
+
+    <input type="file" id="fileInput" hidden />
+
+    <div class="context-menu" id="contextMenu">
+        <div class="menu-title">Вставить</div>
+        <button data-ctx="table">
+            <span class="menu-icon">
+                <img src="/data/table.svg" alt="" />
+            </span>
+            Вставить таблицу
+        </button>
+        <button data-ctx="image">
+            <span class="menu-icon">
+                <img src="/data/image.svg" alt="" />
+            </span>
+            Вставить изображение…
+        </button>
+        <button data-ctx="file">
+            <span class="menu-icon">
+                <img src="/data/file-text.svg" alt="" />
+            </span>
+            Вставить файл…
+        </button>
+        <div class="menu-sep"></div>
+        <button data-ctx="cancel" class="danger">
+            <span class="menu-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                     stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                     aria-hidden="true">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </span>
+            Отмена
+        </button>
+    </div>
+
+    <div class="drop-indicator" id="dropIndicator"></div>
+    <img class="drag-preview" id="dragPreview" alt="" />
+
+    <script>
+        const toggleBtn = document.getElementById('toggleBtn');
+        const sidebar = document.getElementById('sidebar');
+        const mainArea = document.getElementById('mainArea');
+        const editor = document.getElementById('editor');
+        const editorContainer = document.getElementById('editorContainer');
+        const floatingToolbar = document.getElementById('floatingToolbar');
+        const fileInput = document.getElementById('fileInput');
+        const contextMenu = document.getElementById('contextMenu');
+        const dropIndicator = document.getElementById('dropIndicator');
+        const dragPreview = document.getElementById('dragPreview');
+
+        let isOpen = false;
+        let savedRange = null;
+        let contextMenuRange = null;
+        let pendingInsertAction = null;
+
+        let selectedImage = null;
+        let selectedVideo = null;
+        let selectedFile = null;
+        let selectedTable = null;
+        let resizeHandle = null;
+        let alignHandle = null;
+        let deleteHandle = null;
+        let tableAddColBtn = null;
+        let tableAddRowBtn = null;
+        let tableDeleteBtn = null;
+        let isResizing = false;
+        let startX = 0, startY = 0;
+        let startWidth = 0, startHeight = 0;
+        let startRatio = 1;
+
+        let isDragOver = false;
+        let dragCounter = 0;
+
+        function createDeleteHandle() {
+            if (deleteHandle) return deleteHandle;
+            const handle = document.createElement('div');
+            handle.className = 'delete-handle';
+            handle.title = 'Удалить';
+            const img = document.createElement('img');
+            img.src = '/data/trash.svg';
+            img.alt = 'delete';
+            img.onerror = () => {
+                img.remove();
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('width', '18');
+                svg.setAttribute('height', '18');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', '#ffffff');
+                svg.setAttribute('stroke-width', '2.5');
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly.setAttribute('points', '3 6 5 6 21 6');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2');
+                svg.appendChild(poly);
+                svg.appendChild(path);
+                handle.appendChild(svg);
+            };
+            handle.appendChild(img);
+            handle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                const target = selectedImage || selectedVideo;
+                if (!target) return;
+                target.remove();
+                deselectImage();
+                deselectVideo();
+            });
+            document.body.appendChild(handle);
+            deleteHandle = handle;
+            return handle;
+        }
+
+        function createResizeHandle() {
+            if (resizeHandle) return resizeHandle;
+            const handle = document.createElement('div');
+            handle.className = 'resize-handle';
+            handle.title = 'Потяните для изменения размера';
+            const img = document.createElement('img');
+            img.src = '/data/size.svg';
+            img.alt = 'resize';
+            img.onerror = () => {
+                img.remove();
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('width', '18');
+                svg.setAttribute('height', '18');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', '#ffffff');
+                svg.setAttribute('stroke-width', '2.5');
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line1.setAttribute('x1', '21'); line1.setAttribute('y1', '3');
+                line1.setAttribute('x2', '14'); line1.setAttribute('y2', '10');
+                const line2 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line2.setAttribute('x1', '3'); line2.setAttribute('y1', '21');
+                line2.setAttribute('x2', '10'); line2.setAttribute('y2', '14');
+                const poly1 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly1.setAttribute('points', '21 3 21 9 15 3');
+                const poly2 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly2.setAttribute('points', '3 21 3 15 9 21');
+                svg.appendChild(line1); svg.appendChild(line2);
+                svg.appendChild(poly1); svg.appendChild(poly2);
+                handle.appendChild(svg);
+            };
+            handle.appendChild(img);
+            handle.addEventListener('mousedown', onResizeStart);
+            document.addEventListener('mousemove', onResizeMove);
+            document.addEventListener('mouseup', onResizeEnd);
+            document.body.appendChild(handle);
+            resizeHandle = handle;
+            return handle;
+        }
+
+        function createAlignHandle() {
+            if (alignHandle) return alignHandle;
+            const handle = document.createElement('div');
+            handle.className = 'align-handle';
+            handle.title = 'Изменить выравнивание';
+            const img = document.createElement('img');
+            img.src = '/data/arrow-left-right.svg';
+            img.alt = 'align';
+            img.onerror = () => {
+                img.remove();
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('width', '18');
+                svg.setAttribute('height', '18');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', '#ffffff');
+                svg.setAttribute('stroke-width', '2.5');
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                const line1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line1.setAttribute('x1', '4'); line1.setAttribute('y1', '12');
+                line1.setAttribute('x2', '20'); line1.setAttribute('y2', '12');
+                const poly1 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly1.setAttribute('points', '8 8 4 12 8 16');
+                const poly2 = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly2.setAttribute('points', '16 8 20 12 16 16');
+                svg.appendChild(line1);
+                svg.appendChild(poly1);
+                svg.appendChild(poly2);
+                handle.appendChild(svg);
+            };
+            handle.appendChild(img);
+            handle.addEventListener('click', onAlignClick);
+            document.body.appendChild(handle);
+            alignHandle = handle;
+            return handle;
+        }
+
+        function showHandles(el) {
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+            const handleSize = 28;
+
+            const resize = createResizeHandle();
+            const align = createAlignHandle();
+            const del = createDeleteHandle();
+
+            const baseRight = rect.right + scrollX;
+            const baseBottom = rect.bottom + scrollY;
+
+            align.style.left = (baseRight - handleSize * 3 - 16) + 'px';
+            align.style.top = (baseBottom - handleSize + 6) + 'px';
+            align.style.display = 'flex';
+
+            del.style.left = (baseRight - handleSize * 2 - 12) + 'px';
+            del.style.top = (baseBottom - handleSize + 6) + 'px';
+            del.style.display = 'flex';
+
+            resize.style.left = (baseRight - handleSize + 6) + 'px';
+            resize.style.top = (baseBottom - handleSize + 6) + 'px';
+            resize.style.display = 'flex';
+        }
+
+        function hideHandles() {
+            if (resizeHandle) resizeHandle.style.display = 'none';
+            if (alignHandle) alignHandle.style.display = 'none';
+            if (deleteHandle) deleteHandle.style.display = 'none';
+        }
+
+        function deselectImage() {
+            if (selectedImage) {
+                selectedImage.classList.remove('selected');
+                selectedImage = null;
+            }
+            hideHandles();
+        }
+
+        function deselectVideo() {
+            if (selectedVideo) {
+                selectedVideo.classList.remove('selected');
+                selectedVideo = null;
+            }
+            hideHandles();
+        }
+
+        function deselectFile() {
+            if (selectedFile) {
+                selectedFile.classList.remove('selected');
+                selectedFile = null;
+            }
+        }
+
+        function selectImage(img) {
+            if (selectedImage === img) {
+                showHandles(img);
+                return;
+            }
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+            selectedImage = img;
+            img.classList.add('selected');
+            showHandles(img);
+        }
+
+        function selectVideo(video) {
+            if (selectedVideo === video) {
+                showHandles(video);
+                return;
+            }
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+            selectedVideo = video;
+            video.classList.add('selected');
+            showHandles(video);
+        }
+
+        function selectFile(fileEl) {
+            if (selectedFile === fileEl) return;
+            deselectFile();
+            deselectImage();
+            deselectVideo();
+            deselectTable();
+            selectedFile = fileEl;
+            fileEl.classList.add('selected');
+        }
+
+        function createTableAddButtons() {
+            if (tableAddColBtn && tableAddRowBtn && tableDeleteBtn) return;
+            tableAddColBtn = document.createElement('button');
+            tableAddColBtn.className = 'table-add-col';
+            tableAddColBtn.title = 'Добавить столбец';
+            tableAddColBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addColumnToTable(selectedTable);
+            });
+
+            tableAddRowBtn = document.createElement('button');
+            tableAddRowBtn.className = 'table-add-row';
+            tableAddRowBtn.title = 'Добавить строку';
+            tableAddRowBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                addRowToTable(selectedTable);
+            });
+
+            tableDeleteBtn = document.createElement('button');
+            tableDeleteBtn.className = 'table-delete-handle';
+            tableDeleteBtn.title = 'Удалить таблицу';
+            const delImg = document.createElement('img');
+            delImg.src = '/data/trash.svg';
+            delImg.alt = 'delete';
+            delImg.onerror = () => {
+                delImg.remove();
+                const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                svg.setAttribute('viewBox', '0 0 24 24');
+                svg.setAttribute('width', '16');
+                svg.setAttribute('height', '16');
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', '#ffffff');
+                svg.setAttribute('stroke-width', '2.5');
+                svg.setAttribute('stroke-linecap', 'round');
+                svg.setAttribute('stroke-linejoin', 'round');
+                const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
+                poly.setAttribute('points', '3 6 5 6 21 6');
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', 'M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2');
+                svg.appendChild(poly);
+                svg.appendChild(path);
+                tableDeleteBtn.appendChild(svg);
+            };
+            tableDeleteBtn.appendChild(delImg);
+            tableDeleteBtn.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (selectedTable) {
+                    selectedTable.remove();
+                    deselectTable();
+                }
+            });
+
+            document.body.appendChild(tableAddColBtn);
+            document.body.appendChild(tableAddRowBtn);
+            document.body.appendChild(tableDeleteBtn);
+        }
+
+        function showTableAddButtons(table) {
+            if (!table) return;
+            createTableAddButtons();
+            const rect = table.getBoundingClientRect();
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+            const btnSize = 26;
+
+            tableAddColBtn.style.left = (rect.right + scrollX + 6) + 'px';
+            tableAddColBtn.style.top = (rect.top + scrollY + rect.height / 2 - btnSize / 2) + 'px';
+            tableAddColBtn.classList.add('show');
+
+            tableAddRowBtn.style.left = (rect.left + scrollX + rect.width / 2 - btnSize / 2) + 'px';
+            tableAddRowBtn.style.top = (rect.bottom + scrollY + 6) + 'px';
+            tableAddRowBtn.classList.add('show');
+
+            tableDeleteBtn.style.left = (rect.right + scrollX + 6) + 'px';
+            tableDeleteBtn.style.top = (rect.top + scrollY - btnSize - 6) + 'px';
+            tableDeleteBtn.classList.add('show');
+        }
+
+        function hideTableAddButtons() {
+            if (tableAddColBtn) tableAddColBtn.classList.remove('show');
+            if (tableAddRowBtn) tableAddRowBtn.classList.remove('show');
+            if (tableDeleteBtn) tableDeleteBtn.classList.remove('show');
+        }
+
+        function selectTable(table) {
+            if (selectedTable === table) {
+                showTableAddButtons(table);
+                return;
+            }
+            deselectTable();
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            selectedTable = table;
+            showTableAddButtons(table);
+        }
+
+        function deselectTable() {
+            if (selectedTable) {
+                selectedTable = null;
+            }
+            hideTableAddButtons();
+        }
+
+        function addColumnToTable(table) {
+            if (!table) return;
+            const rows = table.querySelectorAll('tr');
+            rows.forEach((row) => {
+                const isHeader = row.parentElement.tagName === 'THEAD' ||
+                                 (row.parentElement.tagName === 'TABLE' && row.rowIndex === 0);
+                const cell = document.createElement(isHeader ? 'th' : 'td');
+                cell.innerHTML = '<br>';
+                row.appendChild(cell);
+            });
+            showTableAddButtons(table);
+            editor.focus();
+        }
+
+        function addRowToTable(table) {
+            if (!table) return;
+            const tbody = table.querySelector('tbody') || table;
+            const lastRow = tbody.querySelector('tr:last-child');
+            if (!lastRow) return;
+            const newRow = document.createElement('tr');
+            const colCount = lastRow.children.length || 1;
+            for (let i = 0; i < colCount; i++) {
+                const cell = document.createElement('td');
+                cell.innerHTML = '<br>';
+                newRow.appendChild(cell);
+            }
+            tbody.appendChild(newRow);
+            showTableAddButtons(table);
+            editor.focus();
+        }
+
+        function insertTable(range, rows, cols) {
+            rows = rows || 3;
+            cols = cols || 3;
+            const table = document.createElement('table');
+            table.className = 'inserted-table';
+            table.contentEditable = 'true';
+
+            const thead = document.createElement('thead');
+            const headerRow = document.createElement('tr');
+            for (let c = 0; c < cols; c++) {
+                const th = document.createElement('th');
+                th.innerHTML = '<br>';
+                headerRow.appendChild(th);
+            }
+            thead.appendChild(headerRow);
+            table.appendChild(thead);
+
+            const tbody = document.createElement('tbody');
+            for (let r = 0; r < rows - 1; r++) {
+                const tr = document.createElement('tr');
+                for (let c = 0; c < cols; c++) {
+                    const td = document.createElement('td');
+                    td.innerHTML = '<br>';
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+            table.appendChild(tbody);
+
+            range.deleteContents();
+            range.insertNode(table);
+            placeCaretAfter(table);
+            editor.focus();
+
+            selectTable(table);
+            return table;
+        }
+
+        function onResizeStart(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const target = selectedImage || selectedVideo;
+            if (!target) return;
+            isResizing = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            const rect = target.getBoundingClientRect();
+            startWidth = rect.width;
+            startHeight = rect.height;
+            if (target.style.height && target.style.height !== 'auto') {
+                startRatio = parseFloat(target.style.width) / parseFloat(target.style.height);
+            } else {
+                startRatio = startWidth / startHeight;
+            }
+        }
+
+        function onResizeMove(e) {
+            if (!isResizing) return;
+            const target = selectedImage || selectedVideo;
+            if (!target) return;
+            e.preventDefault();
+            const dx = e.clientX - startX;
+            let newWidth = startWidth + dx;
+            if (newWidth < 30) newWidth = 30;
+            let newHeight = newWidth / startRatio;
+            target.style.width = newWidth + 'px';
+            target.style.height = newHeight + 'px';
+            showHandles(target);
+        }
+
+        function onResizeEnd() {
+            if (!isResizing) return;
+            isResizing = false;
+        }
+
+        function onAlignClick(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const target = selectedImage || selectedVideo;
+            if (!target) return;
+            const currentAlign = target.dataset.align || 'left';
+            let nextAlign;
+            if (currentAlign === 'left') nextAlign = 'center';
+            else if (currentAlign === 'center') nextAlign = 'right';
+            else nextAlign = 'left';
+
+            target.dataset.align = nextAlign;
+
+            if (nextAlign === 'left') {
+                target.style.display = 'block';
+                target.style.marginLeft = '0';
+                target.style.marginRight = 'auto';
+            } else if (nextAlign === 'center') {
+                target.style.display = 'block';
+                target.style.marginLeft = 'auto';
+                target.style.marginRight = 'auto';
+            } else {
+                target.style.display = 'block';
+                target.style.marginLeft = 'auto';
+                target.style.marginRight = '0';
+            }
+            showHandles(target);
+        }
+
+        editor.addEventListener('click', (e) => {
+            const target = e.target;
+
+            if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) {
+                e.stopPropagation();
+                selectImage(target);
+                return;
+            }
+
+            if (target.tagName === 'VIDEO' && target.classList.contains('inserted-video')) {
+                e.stopPropagation();
+                selectVideo(target);
+                return;
+            }
+
+            const fileEl = target.closest && target.closest('.inserted-file');
+            if (fileEl) {
+                e.stopPropagation();
+                e.preventDefault();
+                selectFile(fileEl);
+                return;
+            }
+
+            const tableEl = target.closest && target.closest('.inserted-table');
+            if (tableEl) {
+                selectTable(tableEl);
+                return;
+            }
+
+            if (target.closest && target.closest('.resize-handle')) return;
+            if (target.closest && target.closest('.align-handle')) return;
+            if (target.closest && target.closest('.delete-handle')) return;
+            if (target.closest && target.closest('.table-add-col')) return;
+            if (target.closest && target.closest('.table-add-row')) return;
+            if (target.closest && target.closest('.table-delete-handle')) return;
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+        });
+
+        editor.addEventListener('dblclick', (e) => {
+            const fileEl = e.target.closest && e.target.closest('.inserted-file');
+            if (!fileEl) return;
+            e.preventDefault();
+            e.stopPropagation();
+
+            const url = fileEl.dataset.objectUrl;
+            const name = fileEl.dataset.filename || 'file';
+            if (url) {
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            }
+        });
+
+        editor.addEventListener('beforeinput', (e) => {
+            if (e.inputType !== 'deleteContentBackward' && e.inputType !== 'deleteContentForward') return;
+
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+
+            if (selectedTable) {
+                e.preventDefault();
+                return;
+            }
+
+            const node = sel.anchorNode;
+            if (!node) return;
+
+            let el = node.nodeType === 1 ? node : node.parentElement;
+
+            const fileInPath = el && el.closest && el.closest('.inserted-file');
+            if (fileInPath && fileInPath.dataset.objectUrl) {
+                URL.revokeObjectURL(fileInPath.dataset.objectUrl);
+            }
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            const target = e.target;
+            if (target.closest && target.closest('.resize-handle')) return;
+            if (target.closest && target.closest('.align-handle')) return;
+            if (target.closest && target.closest('.delete-handle')) return;
+            if (target.closest && target.closest('.table-add-col')) return;
+            if (target.closest && target.closest('.table-add-row')) return;
+            if (target.closest && target.closest('.table-delete-handle')) return;
+            if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) return;
+            if (target.tagName === 'VIDEO' && target.classList.contains('inserted-video')) return;
+            if (target.closest && target.closest('.inserted-file')) return;
+            if (target.closest && target.closest('.inserted-table')) return;
+            if (editor.contains(target)) return;
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+        });
+
+        function repositionHandles() {
+            const target = selectedImage || selectedVideo;
+            if (target) showHandles(target);
+            if (selectedTable) showTableAddButtons(selectedTable);
+        }
+
+        editor.addEventListener('scroll', repositionHandles);
+        window.addEventListener('scroll', repositionHandles);
+        window.addEventListener('resize', () => {
+            repositionHandles();
+            hideContextMenu();
+        });
+
+        editor.addEventListener('input', () => {
+            if (selectedImage && !editor.contains(selectedImage)) deselectImage();
+            if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
+            if (selectedFile && !editor.contains(selectedFile)) deselectFile();
+            if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+        });
+
+        const observer = new MutationObserver(() => {
+            if (selectedImage && !editor.contains(selectedImage)) deselectImage();
+            if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
+            if (selectedFile && !editor.contains(selectedFile)) deselectFile();
+            if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+        });
+        observer.observe(editor, { childList: true, subtree: true });
+
+        toggleBtn.addEventListener('click', () => {
+            isOpen = !isOpen;
+            sidebar.classList.toggle('open', isOpen);
+            mainArea.classList.toggle('shifted', isOpen);
+            toggleBtn.classList.toggle('open', isOpen);
+            toggleBtn.textContent = isOpen ? '‹' : '›';
+            toggleBtn.title = isOpen ? 'Скрыть панель' : 'Открыть панель';
+        });
+
+        function saveSelection() {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0 && !sel.isCollapsed) {
+                savedRange = sel.getRangeAt(0).cloneRange();
+                return true;
+            }
+            return false;
+        }
+
+        function restoreSelection() {
+            if (savedRange) {
+                const sel = window.getSelection();
+                sel.removeAllRanges();
+                sel.addRange(savedRange);
+                return true;
+            }
+            return false;
+        }
+
+        function formatText(action) {
+            if (action === 'table') {
+                const sel = window.getSelection();
+                let range;
+                if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                    range = sel.getRangeAt(0);
+                } else {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                insertTable(range);
+                return;
+            }
+
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+                const examples = {
+                    bold: 'жирный текст',
+                    italic: 'курсивный текст',
+                    underline: 'подчёркнутый текст',
+                    strikethrough: 'зачёркнутый текст',
+                    uppercase: 'ЗАГЛАВНЫЙ ТЕКСТ',
+                    lowercase: 'строчный текст',
+                    code: 'код',
+                    highlight: 'выделенный текст',
+                    larger: 'БОЛЬШОЙ ТЕКСТ',
+                    smaller: 'маленький текст',
+                    link: 'текст ссылки',
+                    image: 'альт текст',
+                    file: 'файл'
+                };
+                const example = examples[action] || 'текст';
+                const range = sel.getRangeAt(0);
+                const textNode = document.createTextNode(example);
+                range.insertNode(textNode);
+                range.setStart(textNode, 0);
+                range.setEnd(textNode, example.length);
+                sel.removeAllRanges();
+                sel.addRange(range);
+                applyFormatting(action);
+                return;
+            }
+            applyFormatting(action);
+        }
+
+        function applyFormatting(action) {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) return;
+            const range = sel.getRangeAt(0);
+            const fragment = range.extractContents();
+            const text = fragment.textContent || '';
+            let wrapper = document.createElement('span');
+
+            switch (action) {
+                case 'bold': wrapper.style.fontWeight = 'bold'; break;
+                case 'italic': wrapper.style.fontStyle = 'italic'; break;
+                case 'underline': wrapper.style.textDecoration = 'underline'; break;
+                case 'strikethrough': wrapper.style.textDecoration = 'line-through'; break;
+                case 'code':
+                    wrapper.style.fontFamily = 'monospace';
+                    wrapper.style.background = '#e2e8f0';
+                    wrapper.style.padding = '2px 6px';
+                    wrapper.style.borderRadius = '4px';
+                    break;
+                case 'highlight':
+                    wrapper.style.background = '#fef08a';
+                    wrapper.style.padding = '2px 4px';
+                    break;
+                case 'uppercase': wrapper.style.textTransform = 'uppercase'; break;
+                case 'lowercase': wrapper.style.textTransform = 'lowercase'; break;
+                case 'larger':
+                    wrapper.style.fontSize = '24px';
+                    wrapper.style.fontWeight = 'bold';
+                    break;
+                case 'smaller':
+                    wrapper.style.fontSize = '14px';
+                    wrapper.style.color = '#64748b';
+                    break;
+                case 'link': {
+                    const link = document.createElement('a');
+                    link.href = '#';
+                    link.textContent = text;
+                    link.style.color = '#3b82f6';
+                    link.style.textDecoration = 'underline';
+                    link.style.cursor = 'pointer';
+                    wrapper = link;
+                    break;
+                }
+                case 'image': {
+                    const img = document.createElement('span');
+                    img.textContent = '🖼️ ' + text;
+                    img.style.background = '#f1f5f9';
+                    img.style.padding = '4px 12px';
+                    img.style.borderRadius = '8px';
+                    img.style.display = 'inline-block';
+                    wrapper = img;
+                    break;
+                }
+                case 'file': {
+                    const file = document.createElement('span');
+                    file.textContent = '📎 ' + text;
+                    file.style.background = '#e2e8f0';
+                    file.style.padding = '4px 12px';
+                    file.style.borderRadius = '8px';
+                    file.style.display = 'inline-block';
+                    wrapper = file;
+                    break;
+                }
+                default:
+                    wrapper.textContent = text;
+            }
+
+            if (!['link', 'image', 'file'].includes(action)) {
+                wrapper.textContent = text;
+            }
+
+            range.insertNode(wrapper);
+            range.setStart(wrapper, 0);
+            range.setEnd(wrapper, wrapper.childNodes.length || 0);
+            sel.removeAllRanges();
+            sel.addRange(range);
+
+            floatingToolbar.querySelectorAll('button').forEach(btn => {
+                if (btn.dataset.action === action) {
+                    btn.classList.add('active');
+                    setTimeout(() => btn.classList.remove('active'), 500);
+                }
+            });
+
+            hideFloatingToolbar();
+            editor.focus();
+        }
+
+        function positionToolbarNearSelection() {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
+            const range = sel.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) return false;
+            const toolbarWidth = floatingToolbar.offsetWidth || 400;
+            const toolbarHeight = floatingToolbar.offsetHeight || 48;
+            let top = rect.top - toolbarHeight - 12;
+            let left = rect.left + rect.width / 2 - toolbarWidth / 2;
+            if (top < 10) top = rect.bottom + 12;
+            if (left < 10) left = 10;
+            if (left + toolbarWidth > window.innerWidth - 10) {
+                left = window.innerWidth - toolbarWidth - 10;
+            }
+            if (top + toolbarHeight > window.innerHeight - 10) {
+                top = window.innerHeight - toolbarHeight - 10;
+            }
+            if (top < 10) top = 10;
+            floatingToolbar.style.top = top + 'px';
+            floatingToolbar.style.left = left + 'px';
+            return true;
+        }
+
+        function showFloatingToolbar() {
+            if (positionToolbarNearSelection()) {
+                floatingToolbar.classList.add('show');
+            }
+        }
+
+        function hideFloatingToolbar() {
+            floatingToolbar.classList.remove('show');
+        }
+
+        editor.addEventListener('mouseup', handleSelection);
+        editor.addEventListener('keyup', handleSelection);
+
+        function handleSelection() {
+            const sel = window.getSelection();
+            if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+                const text = sel.toString().trim();
+                if (text.length > 0) {
+                    showFloatingToolbar();
+                    return;
+                }
+            }
+            hideFloatingToolbar();
+        }
+
+        document.querySelectorAll('[data-action]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = btn.dataset.action;
+
+                if (action === 'image') {
+                    pendingInsertAction = 'image';
+                    fileInput.accept = 'image/*';
+                    fileInput.value = '';
+                    fileInput.click();
+                    return;
+                }
+                if (action === 'file') {
+                    pendingInsertAction = 'file';
+                    fileInput.accept = '';
+                    fileInput.value = '';
+                    fileInput.click();
+                    return;
+                }
+
+                formatText(action);
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            const isToolbar = floatingToolbar.contains(e.target);
+            const isEditor = editor.contains(e.target);
+            const isSidebar = sidebar.contains(e.target);
+            const isToggle = toggleBtn.contains(e.target);
+            const isCtx = contextMenu.contains(e.target);
+            const isResize = e.target.closest && e.target.closest('.resize-handle');
+            const isAlign = e.target.closest && e.target.closest('.align-handle');
+            const isDelete = e.target.closest && e.target.closest('.delete-handle');
+            const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
+            if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isResize && !isAlign && !isDelete && !isTableBtn) {
+                hideFloatingToolbar();
+                hideContextMenu();
+                deselectImage();
+                deselectVideo();
+                deselectFile();
+                deselectTable();
+            }
+        });
+
+        editor.addEventListener('input', () => {
+            const sel = window.getSelection();
+            if (!sel || sel.isCollapsed) {
+                hideFloatingToolbar();
+            }
+        });
+
+        sidebar.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        function showContextMenu(x, y) {
+            contextMenu.classList.add('show');
+            const menuWidth = contextMenu.offsetWidth || 230;
+            const menuHeight = contextMenu.offsetHeight || 150;
+            let left = x;
+            let top = y;
+            if (left + menuWidth > window.innerWidth - 10) {
+                left = window.innerWidth - menuWidth - 10;
+            }
+            if (top + menuHeight > window.innerHeight - 10) {
+                top = window.innerHeight - menuHeight - 10;
+            }
+            if (left < 10) left = 10;
+            if (top < 10) top = 10;
+            contextMenu.style.left = left + 'px';
+            contextMenu.style.top = top + 'px';
+        }
+
+        function hideContextMenu() {
+            contextMenu.classList.remove('show');
+        }
+
+        editor.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            hideFloatingToolbar();
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                contextMenuRange = sel.getRangeAt(0).cloneRange();
+            } else {
+                const range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+                contextMenuRange = range;
+            }
+            showContextMenu(e.clientX, e.clientY);
+        });
+
+        contextMenu.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const action = btn.dataset.ctx;
+                hideContextMenu();
+
+                if (action === 'cancel') {
+                    contextMenuRange = null;
+                    pendingInsertAction = null;
+                    return;
+                }
+
+                if (action === 'table') {
+                    let range = contextMenuRange;
+                    if (!range || !editor.contains(range.startContainer)) {
+                        range = document.createRange();
+                        range.selectNodeContents(editor);
+                        range.collapse(false);
+                    }
+                    contextMenuRange = null;
+                    pendingInsertAction = null;
+                    insertTable(range);
+                    return;
+                }
+
+                if (action === 'image') {
+                    pendingInsertAction = 'image';
+                    fileInput.accept = 'image/*';
+                } else {
+                    pendingInsertAction = 'file';
+                    fileInput.accept = '';
+                }
+                fileInput.value = '';
+                fileInput.click();
+            });
+        });
+
+        document.addEventListener('mousedown', (e) => {
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        editor.addEventListener('scroll', hideContextMenu);
+
+        function placeCaretAfter(node) {
+            const sel = window.getSelection();
+            if (!sel) return;
+
+            const br = document.createElement('br');
+            node.parentNode.insertBefore(br, node.nextSibling);
+
+            const space = document.createTextNode('\u200B');
+            br.parentNode.insertBefore(space, br.nextSibling);
+
+            const range = document.createRange();
+            range.setStart(space, 1);
+            range.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(range);
+        }
+
+        function insertMediaFile(file, range) {
+            const isImage = file.type.startsWith('image/');
+            const isVideo = file.type.startsWith('video/');
+
+            if (isImage) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const img = document.createElement('img');
+                    img.src = ev.target.result;
+                    img.alt = file.name;
+                    img.className = 'inserted-image';
+                    img.title = file.name;
+                    img.style.width = '300px';
+                    img.style.height = 'auto';
+                    img.style.display = 'block';
+                    img.style.marginLeft = '0';
+                    img.style.marginRight = 'auto';
+                    img.dataset.align = 'left';
+                    range.insertNode(img);
+                    placeCaretAfter(img);
+                    editor.focus();
+                };
+                reader.readAsDataURL(file);
+            } else if (isVideo) {
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                    const video = document.createElement('video');
+                    video.src = ev.target.result;
+                    video.className = 'inserted-video';
+                    video.title = file.name;
+                    video.controls = true;
+                    video.style.width = '400px';
+                    video.style.height = 'auto';
+                    video.style.display = 'block';
+                    video.style.marginLeft = '0';
+                    video.style.marginRight = 'auto';
+                    video.dataset.align = 'left';
+                    video.style.borderRadius = '8px';
+                    range.insertNode(video);
+                    placeCaretAfter(video);
+                    editor.focus();
+                };
+                reader.readAsDataURL(file);
+            } else {
+                const fileEl = document.createElement('a');
+                fileEl.className = 'inserted-file';
+                fileEl.href = '#';
+                fileEl.title = file.name + ' (двойной клик — открыть)';
+                fileEl.dataset.filename = file.name;
+                fileEl.dataset.filesize = file.size;
+                fileEl.dataset.filetype = file.type || 'unknown';
+                fileEl.contentEditable = 'false';
+
+                const objectUrl = URL.createObjectURL(file);
+                fileEl.dataset.objectUrl = objectUrl;
+
+                const iconSrc = '/data/file-text.svg';
+                const sizeStr = formatFileSize(file.size);
+                fileEl.innerHTML = `
+                    <span class="file-icon"><img src="${iconSrc}" alt="" /></span>
+                    <span class="file-name">${escapeHtml(file.name)}</span>
+                    <span class="file-size">${sizeStr}</span>
+                `;
+
+                range.insertNode(fileEl);
+                placeCaretAfter(fileEl);
+                editor.focus();
+            }
+        }
+
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files && fileInput.files[0];
+            if (!file) {
+                contextMenuRange = null;
+                pendingInsertAction = null;
+                return;
+            }
+
+            let range = null;
+            const sel = window.getSelection();
+
+            if (contextMenuRange) {
+                sel.removeAllRanges();
+                sel.addRange(contextMenuRange);
+                range = contextMenuRange;
+            } else if (pendingInsertAction) {
+                if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                    range = sel.getRangeAt(0);
+                } else {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+            } else {
+                contextMenuRange = null;
+                pendingInsertAction = null;
+                return;
+            }
+
+            if (!range) return;
+
+            range.deleteContents();
+            insertMediaFile(file, range);
+
+            contextMenuRange = null;
+            pendingInsertAction = null;
+            fileInput.value = '';
+            fileInput.accept = '';
+        });
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Б';
+            const k = 1024;
+            const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        }
+
+        function escapeHtml(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getHTML() { return editor.innerHTML; }
+        function getText() { return editor.textContent; }
+
+        window.getHTML = getHTML;
+        window.getText = getText;
+
+        function getRangeFromPoint(x, y) {
+            let range = null;
+            if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(x, y);
+            } else if (document.caretPositionFromPoint) {
+                const pos = document.caretPositionFromPoint(x, y);
+                if (pos) {
+                    range = document.createRange();
+                    range.setStart(pos.offsetNode, pos.offset);
+                    range.collapse(true);
+                }
+            }
+            return range;
+        }
+
+        function updateDropIndicator(clientY) {
+            const range = getRangeFromPoint(0, clientY);
+            if (range && editor.contains(range.startContainer)) {
+                const rect = range.getBoundingClientRect();
+                if (rect) {
+                    let top = rect.top;
+                    if (rect.height === 0) top = rect.top;
+                    dropIndicator.style.top = top + 'px';
+                    dropIndicator.classList.add('show');
+                    return range;
+                }
+            }
+            const editorRect = editor.getBoundingClientRect();
+            if (clientY >= editorRect.top && clientY <= editorRect.bottom) {
+                dropIndicator.style.top = clientY + 'px';
+                dropIndicator.classList.add('show');
+            }
+            return null;
+        }
+
+        function handleDragEnter(e) {
+            e.preventDefault();
+            dragCounter++;
+            if (!isDragOver) {
+                isDragOver = true;
+            }
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            if (e.dataTransfer) {
+                e.dataTransfer.dropEffect = 'copy';
+            }
+
+            const range = updateDropIndicator(e.clientY);
+
+            const items = e.dataTransfer && e.dataTransfer.items;
+            if (items && items.length > 0) {
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.kind === 'file') {
+                        const file = item.getAsFile();
+                        if (file) {
+                            if (file.type.startsWith('image/')) {
+                                if (dragPreview.dataset.previewSrc !== 'image') {
+                                    dragPreview.dataset.previewSrc = 'image';
+                                    const reader = new FileReader();
+                                    reader.onload = (ev) => {
+                                        dragPreview.src = ev.target.result;
+                                        dragPreview.classList.add('show');
+                                    };
+                                    reader.readAsDataURL(file);
+                                }
+                                dragPreview.style.left = (e.clientX + 16) + 'px';
+                                dragPreview.style.top = (e.clientY + 16) + 'px';
+                                dragPreview.style.width = 'auto';
+                                dragPreview.style.height = 'auto';
+                            } else if (file.type.startsWith('video/')) {
+                                if (dragPreview.dataset.previewSrc !== 'video') {
+                                    dragPreview.dataset.previewSrc = 'video';
+                                    dragPreview.src = '';
+                                    dragPreview.classList.remove('show');
+                                }
+                            } else {
+                                if (dragPreview.dataset.previewSrc !== 'file') {
+                                    dragPreview.dataset.previewSrc = 'file';
+                                    dragPreview.src = '';
+                                    dragPreview.classList.remove('show');
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            dragCounter--;
+            if (dragCounter <= 0) {
+                dragCounter = 0;
+                isDragOver = false;
+                dropIndicator.classList.remove('show');
+                dragPreview.classList.remove('show');
+                dragPreview.removeAttribute('data-preview-src');
+            }
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            dragCounter = 0;
+            isDragOver = false;
+            dropIndicator.classList.remove('show');
+            dragPreview.classList.remove('show');
+            dragPreview.removeAttribute('data-preview-src');
+
+            const files = e.dataTransfer && e.dataTransfer.files;
+            if (!files || files.length === 0) return;
+
+            let range = null;
+            if (document.caretRangeFromPoint) {
+                range = document.caretRangeFromPoint(e.clientX, e.clientY);
+            } else if (document.caretPositionFromPoint) {
+                const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
+                if (pos) {
+                    range = document.createRange();
+                    range.setStart(pos.offsetNode, pos.offset);
+                    range.collapse(true);
+                }
+            }
+
+            if (!range || !editor.contains(range.startContainer)) {
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+            }
+
+            let container = range.startContainer;
+            if (container.nodeType === 1) {
+                const fileParent = container.closest && container.closest('.inserted-file');
+                if (fileParent) {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+            } else if (container.parentElement && container.parentElement.closest && container.parentElement.closest('.inserted-file')) {
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+            }
+
+            range.deleteContents();
+
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                if (i === 0) {
+                    insertMediaFile(file, range);
+                } else {
+                    const newRange = document.createRange();
+                    newRange.selectNodeContents(editor);
+                    newRange.collapse(false);
+                    insertMediaFile(file, newRange);
+                }
+            }
+        }
+
+        editorContainer.addEventListener('dragenter', handleDragEnter);
+        editorContainer.addEventListener('dragover', handleDragOver);
+        editorContainer.addEventListener('dragleave', handleDragLeave);
+        editorContainer.addEventListener('drop', handleDrop);
+
+        document.addEventListener('dragenter', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('dragover', (e) => {
+            e.preventDefault();
+        });
+
+        document.addEventListener('drop', (e) => {
+            if (!editorContainer.contains(e.target)) {
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
