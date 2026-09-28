@@ -2,8 +2,6 @@
 
 I really liked the text editor from Telegram for my projects, so I'll try to replicate it over time.
 
-<img width="1920" height="1080" alt="изображение" src="https://github.com/user-attachments/assets/0b46a663-9dc4-45ef-98dc-d2eda21961c5" />
-
 
 <pre>
 ⠄⠄⠄⠄⠄⠄⠄⠄⠄⣠⠤⠖⠚⢉⣩⣭⡭⠛⠓⠲⠦⣄⡀⠄⠄⠄⠄⠄⠄⠄
