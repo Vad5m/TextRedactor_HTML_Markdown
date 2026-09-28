@@ -3,6 +3,10 @@
 I really liked the text editor from Telegram for my projects, so I'll try to replicate it over time.
 
 
+<img width="1920" height="1200" alt="изображение" src="https://github.com/user-attachments/assets/13c2c6a5-6b20-43f3-ad6e-4cb34dee4e24" />
+
+
+
 <pre>
 ⠄⠄⠄⠄⠄⠄⠄⠄⠄⣠⠤⠖⠚⢉⣩⣭⡭⠛⠓⠲⠦⣄⡀⠄⠄⠄⠄⠄⠄⠄
 ⠄⠄⠄⠄⠄⠄⢀⡴⠋⠁⠄⠄⠊⠄⠄⠄⠄⠄⠄⠄⠄⠄⠉⠳⢦⡀⠄⠄⠄⠄
