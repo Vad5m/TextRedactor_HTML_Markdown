@@ -34,7 +34,7 @@
         .sidebar {
             position: fixed; top: 50%; left: -64px;
             transform: translateY(-50%);
-            width: 64px; height: 480px;
+            width: 64px; height: 560px;
             background: #1e293b;
             display: flex; flex-direction: column;
             align-items: center; padding: 12px 0; gap: 5px;
@@ -85,6 +85,11 @@
             filter: brightness(0) invert(1);
         }
 
+        .sidebar .sidebar-sep {
+            width: 40px; height: 1px; background: #475569; margin: 4px 0;
+            flex-shrink: 0;
+        }
+
         .main-area {
             margin-left: 0; width: 100%; height: 100vh;
             display: flex; align-items: stretch;
@@ -118,6 +123,33 @@
             color: #94a3b8;
         }
         #editor:focus:empty::before { content: ''; }
+
+        .save-indicator {
+            position: fixed;
+            bottom: 16px;
+            right: 20px;
+            background: #1e293b;
+            color: #f1f5f9;
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.25s, transform 0.25s, background 0.25s;
+            pointer-events: none;
+            z-index: 400;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .save-indicator.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .save-indicator.saving { background: #3b82f6; }
+        .save-indicator.saved { background: #16a34a; }
+        .save-indicator.error { background: #ef4444; }
 
         .floating-toolbar {
             position: fixed; background: #1e293b;
@@ -300,6 +332,55 @@
         .inserted-file .file-name { font-weight: 600; }
         .inserted-file .file-size { color: #64748b; font-size: 12px; }
 
+        .inserted-file.uploading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        .inserted-file.uploading .file-size::after {
+            content: ' …';
+        }
+        .inserted-file.error {
+            background: #fef2f2;
+            border-color: #fecaca;
+            color: #ef4444;
+        }
+
+        .inserted-link {
+            display: inline-flex;
+            flex-direction: column;
+            gap: 2px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 6px 12px;
+            margin: 2px 0;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background 0.15s, box-shadow 0.15s;
+            user-select: none;
+            max-width: 100%;
+            vertical-align: middle;
+        }
+        .inserted-link:hover { background: #dbeafe; }
+        .inserted-link.selected {
+            box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.3);
+        }
+        .inserted-link .link-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #1e40af;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .inserted-link .link-url {
+            font-size: 12px;
+            color: #3b82f6;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .resize-handle {
             position: absolute;
             width: 28px;
@@ -438,7 +519,7 @@
             position: fixed;
             z-index: 1001;
             pointer-events: none;
-            opacity: 0.75;
+            opacity: 0.55;
             border-radius: 8px;
             box-shadow: 0 8px 24px rgba(0,0,0,0.25);
             max-width: 200px;
@@ -447,10 +528,118 @@
             border: 2px dashed #3b82f6;
             background: #f8fafc;
             display: none;
+            transition: opacity 0.15s;
         }
 
         .drag-preview.show {
             display: block;
+        }
+
+        .file-preview-tooltip {
+            position: fixed;
+            z-index: 1500;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
+            padding: 12px 14px;
+            max-width: 380px;
+            min-width: 220px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: opacity 0.15s ease, transform 0.15s ease;
+            font-size: 13px;
+            color: #0f172a;
+            line-height: 1.5;
+            overflow: hidden;
+        }
+        .file-preview-tooltip.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .file-preview-tooltip .preview-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .file-preview-tooltip .preview-header .preview-icon {
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        .file-preview-tooltip .preview-header .preview-icon img {
+            width: 20px;
+            height: 20px;
+            display: block;
+            filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-rotate(190deg) brightness(95%) contrast(95%);
+        }
+        .file-preview-tooltip .preview-header .preview-name {
+            font-weight: 600;
+            font-size: 13px;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            flex: 1;
+            min-width: 0;
+        }
+        .file-preview-tooltip .preview-body {
+            max-height: 220px;
+            overflow: hidden;
+            font-family: 'SF Mono', 'Monaco', 'Consolas', monospace;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #475569;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .file-preview-tooltip .preview-body.text-preview {
+            font-family: inherit;
+            font-size: 13px;
+        }
+        .file-preview-tooltip .preview-body img,
+        .file-preview-tooltip .preview-body video,
+        .file-preview-tooltip .preview-body iframe {
+            max-width: 100%;
+            max-height: 200px;
+            border-radius: 6px;
+            display: block;
+        }
+        .file-preview-tooltip .preview-footer {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 11px;
+            color: #94a3b8;
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .file-preview-tooltip .preview-loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #94a3b8;
+            font-size: 12px;
+            padding: 6px 0;
+        }
+        .file-preview-tooltip .preview-loading .spinner {
+            width: 14px;
+            height: 14px;
+            border: 2px solid #e2e8f0;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
 
         .inserted-table {
@@ -572,8 +761,92 @@
             filter: brightness(0) invert(1);
         }
 
+        .link-dialog-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15, 23, 42, 0.4);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .link-dialog-overlay.show {
+            display: flex;
+            opacity: 1;
+        }
+        .link-dialog {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 24px;
+            width: 400px;
+            max-width: calc(100vw - 40px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+        .link-dialog-overlay.show .link-dialog {
+            transform: scale(1);
+        }
+        .link-dialog h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0f172a;
+            margin-bottom: 16px;
+        }
+        .link-dialog label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+        .link-dialog input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            color: #0f172a;
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            margin-bottom: 14px;
+        }
+        .link-dialog input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        }
+        .link-dialog .dialog-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 4px;
+        }
+        .link-dialog .dialog-actions button {
+            padding: 9px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.15s;
+            border: none;
+        }
+        .link-dialog .dialog-actions .btn-cancel {
+            background: #f1f5f9;
+            color: #475569;
+        }
+        .link-dialog .dialog-actions .btn-cancel:hover { background: #e2e8f0; }
+        .link-dialog .dialog-actions .btn-apply {
+            background: #3b82f6;
+            color: #ffffff;
+        }
+        .link-dialog .dialog-actions .btn-apply:hover { background: #2563eb; }
+
         @media (max-width: 600px) {
-            .sidebar { width: 54px; height: 400px; padding: 10px 0; gap: 4px; left: -54px; }
+            .sidebar { width: 54px; height: 460px; padding: 10px 0; gap: 4px; left: -54px; }
             .sidebar.open { left: 0; }
             .toggle-btn.open { left: 54px; }
             .sidebar button { width: 38px; height: 28px; }
@@ -590,7 +863,7 @@
         }
 
         @media (max-width: 420px) {
-            .sidebar { width: 44px; height: 360px; padding: 8px 0; gap: 3px; left: -44px; }
+            .sidebar { width: 44px; height: 420px; padding: 8px 0; gap: 3px; left: -44px; }
             .sidebar.open { left: 0; }
             .toggle-btn.open { left: 44px; }
             .sidebar button { width: 32px; height: 24px; }
@@ -645,6 +918,23 @@
         <button class="icon-btn" title="Файл" data-action="file">
             <img src="/data/file-text.svg" alt="файл" class="icon-white" />
         </button>
+
+        <div class="sidebar-sep"></div>
+
+        <button class="icon-btn" title="Сохранить .vd5" data-action="download-vd5">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+        </button>
+        <button class="icon-btn" title="Открыть .vd5" data-action="open-vd5">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+            </svg>
+        </button>
     </aside>
 
     <div class="main-area" id="mainArea">
@@ -652,6 +942,8 @@
             <div id="editor" contenteditable="true"></div>
         </div>
     </div>
+
+    <div class="save-indicator" id="saveIndicator"></div>
 
     <div class="floating-toolbar" id="floatingToolbar">
         <span class="tool-label">Формат</span>
@@ -677,9 +969,14 @@
         <button data-action="highlight" title="Маркер">
             <img src="/data/marker.svg" alt="маркер" class="icon-white" />
         </button>
+        <div class="divider"></div>
+        <button data-action="link" title="Ссылка">
+            <img src="/data/external-link.svg" alt="ссылка" class="icon-white" />
+        </button>
     </div>
 
     <input type="file" id="fileInput" hidden />
+    <input type="file" id="vd5Input" accept=".vd5,application/json" hidden />
 
     <div class="context-menu" id="contextMenu">
         <div class="menu-title">Вставить</div>
@@ -701,6 +998,12 @@
             </span>
             Вставить файл…
         </button>
+        <button data-ctx="link">
+            <span class="menu-icon">
+                <img src="/data/external-link.svg" alt="" />
+            </span>
+            Вставить ссылку…
+        </button>
         <div class="menu-sep"></div>
         <button data-ctx="cancel" class="danger">
             <span class="menu-icon">
@@ -715,8 +1018,33 @@
         </button>
     </div>
 
-    <div class="drop-indicator" id="dropIndicator"></div>
+    <div class="link-dialog-overlay" id="linkDialogOverlay">
+        <div class="link-dialog">
+            <h3>Вставить ссылку</h3>
+            <label for="linkTitleInput">Название</label>
+            <input type="text" id="linkTitleInput" placeholder="Например: Яндекс" />
+            <label for="linkUrlInput">Ссылка</label>
+            <input type="text" id="linkUrlInput" placeholder="https://example.com" />
+            <div class="dialog-actions">
+                <button class="btn-cancel" id="linkDialogCancel">Отмена</button>
+                <button class="btn-apply" id="linkDialogApply">Вставить</button>
+            </div>
+        </div>
+    </div>
+
     <img class="drag-preview" id="dragPreview" alt="" />
+
+    <div class="file-preview-tooltip" id="filePreviewTooltip">
+        <div class="preview-header">
+            <span class="preview-icon"><img src="/data/file-text.svg" alt="" /></span>
+            <span class="preview-name"></span>
+        </div>
+        <div class="preview-body"></div>
+        <div class="preview-footer">
+            <span class="preview-type"></span>
+            <span class="preview-size"></span>
+        </div>
+    </div>
 
     <script>
         const toggleBtn = document.getElementById('toggleBtn');
@@ -726,9 +1054,21 @@
         const editorContainer = document.getElementById('editorContainer');
         const floatingToolbar = document.getElementById('floatingToolbar');
         const fileInput = document.getElementById('fileInput');
+        const vd5Input = document.getElementById('vd5Input');
         const contextMenu = document.getElementById('contextMenu');
-        const dropIndicator = document.getElementById('dropIndicator');
         const dragPreview = document.getElementById('dragPreview');
+        const filePreviewTooltip = document.getElementById('filePreviewTooltip');
+        const saveIndicator = document.getElementById('saveIndicator');
+
+        const linkDialogOverlay = document.getElementById('linkDialogOverlay');
+        const linkTitleInput = document.getElementById('linkTitleInput');
+        const linkUrlInput = document.getElementById('linkUrlInput');
+        const linkDialogCancel = document.getElementById('linkDialogCancel');
+        const linkDialogApply = document.getElementById('linkDialogApply');
+
+        const STORAGE_KEY = 'vd5_document';
+        const VD5_FORMAT = 'vd5';
+        const VD5_VERSION = 1;
 
         let isOpen = false;
         let savedRange = null;
@@ -739,6 +1079,7 @@
         let selectedVideo = null;
         let selectedFile = null;
         let selectedTable = null;
+        let selectedLink = null;
         let resizeHandle = null;
         let alignHandle = null;
         let deleteHandle = null;
@@ -752,6 +1093,20 @@
 
         let isDragOver = false;
         let dragCounter = 0;
+
+        let linkInsertRange = null;
+        let linkInsertMode = null;
+
+        let draggedElement = null;
+        let dragElementGhost = null;
+        let dropTargetRange = null;
+
+        let previewTooltipTimer = null;
+        let previewTooltipTarget = null;
+        let previewTooltipRequestId = 0;
+
+        let saveTimer = null;
+        let isInternalChange = false;
 
         function createDeleteHandle() {
             if (deleteHandle) return deleteHandle;
@@ -784,11 +1139,13 @@
             handle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                const target = selectedImage || selectedVideo;
+                const target = selectedImage || selectedVideo || selectedLink || selectedTable;
                 if (!target) return;
                 target.remove();
                 deselectImage();
                 deselectVideo();
+                deselectLink();
+                deselectTable();
             });
             document.body.appendChild(handle);
             deleteHandle = handle;
@@ -902,6 +1259,23 @@
             resize.style.display = 'flex';
         }
 
+        function showDeleteOnly(el) {
+            if (!el) return;
+            const rect = el.getBoundingClientRect();
+            const scrollX = window.scrollX || window.pageXOffset;
+            const scrollY = window.scrollY || window.pageYOffset;
+            const handleSize = 28;
+
+            const del = createDeleteHandle();
+
+            const baseRight = rect.right + scrollX;
+            const baseBottom = rect.bottom + scrollY;
+
+            del.style.left = (baseRight - handleSize + 6) + 'px';
+            del.style.top = (baseBottom - handleSize + 6) + 'px';
+            del.style.display = 'flex';
+        }
+
         function hideHandles() {
             if (resizeHandle) resizeHandle.style.display = 'none';
             if (alignHandle) alignHandle.style.display = 'none';
@@ -931,6 +1305,14 @@
             }
         }
 
+        function deselectLink() {
+            if (selectedLink) {
+                selectedLink.classList.remove('selected');
+                selectedLink = null;
+            }
+            hideHandles();
+        }
+
         function selectImage(img) {
             if (selectedImage === img) {
                 showHandles(img);
@@ -940,6 +1322,7 @@
             deselectVideo();
             deselectFile();
             deselectTable();
+            deselectLink();
             selectedImage = img;
             img.classList.add('selected');
             showHandles(img);
@@ -954,6 +1337,7 @@
             deselectVideo();
             deselectFile();
             deselectTable();
+            deselectLink();
             selectedVideo = video;
             video.classList.add('selected');
             showHandles(video);
@@ -965,8 +1349,24 @@
             deselectImage();
             deselectVideo();
             deselectTable();
+            deselectLink();
             selectedFile = fileEl;
             fileEl.classList.add('selected');
+        }
+
+        function selectLink(linkEl) {
+            if (selectedLink === linkEl) {
+                showDeleteOnly(linkEl);
+                return;
+            }
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+            deselectLink();
+            selectedLink = linkEl;
+            linkEl.classList.add('selected');
+            showDeleteOnly(linkEl);
         }
 
         function createTableAddButtons() {
@@ -1065,6 +1465,7 @@
             deselectImage();
             deselectVideo();
             deselectFile();
+            deselectLink();
             selectedTable = table;
             showTableAddButtons(table);
         }
@@ -1088,6 +1489,7 @@
             });
             showTableAddButtons(table);
             editor.focus();
+            scheduleSave();
         }
 
         function addRowToTable(table) {
@@ -1105,6 +1507,7 @@
             tbody.appendChild(newRow);
             showTableAddButtons(table);
             editor.focus();
+            scheduleSave();
         }
 
         function insertTable(range, rows, cols) {
@@ -1142,6 +1545,7 @@
             editor.focus();
 
             selectTable(table);
+            scheduleSave();
             return table;
         }
 
@@ -1180,6 +1584,7 @@
         function onResizeEnd() {
             if (!isResizing) return;
             isResizing = false;
+            scheduleSave();
         }
 
         function onAlignClick(e) {
@@ -1209,6 +1614,7 @@
                 target.style.marginRight = '0';
             }
             showHandles(target);
+            scheduleSave();
         }
 
         editor.addEventListener('click', (e) => {
@@ -1234,8 +1640,20 @@
                 return;
             }
 
+            const linkEl = target.closest && target.closest('.inserted-link');
+            if (linkEl) {
+                e.stopPropagation();
+                e.preventDefault();
+                selectLink(linkEl);
+                return;
+            }
+
             const tableEl = target.closest && target.closest('.inserted-table');
             if (tableEl) {
+                deselectImage();
+                deselectVideo();
+                deselectFile();
+                deselectLink();
                 selectTable(tableEl);
                 return;
             }
@@ -1250,6 +1668,26 @@
             deselectVideo();
             deselectFile();
             deselectTable();
+            deselectLink();
+        });
+
+        editor.addEventListener('focusin', (e) => {
+            const tableEl = e.target.closest && e.target.closest('.inserted-table');
+            if (tableEl) {
+                selectTable(tableEl);
+            }
+        });
+
+        editor.addEventListener('keyup', () => {
+            const sel = window.getSelection();
+            if (!sel || sel.rangeCount === 0) return;
+            const node = sel.anchorNode;
+            if (!node) return;
+            const el = node.nodeType === 1 ? node : node.parentElement;
+            const tableEl = el && el.closest && el.closest('.inserted-table');
+            if (tableEl) {
+                selectTable(tableEl);
+            }
         });
 
         editor.addEventListener('dblclick', (e) => {
@@ -1258,7 +1696,7 @@
             e.preventDefault();
             e.stopPropagation();
 
-            const url = fileEl.dataset.objectUrl;
+            const url = fileEl.dataset.fileurl || fileEl.dataset.objectUrl;
             const name = fileEl.dataset.filename || 'file';
             if (url) {
                 const a = document.createElement('a');
@@ -1270,25 +1708,14 @@
             }
         });
 
-        editor.addEventListener('beforeinput', (e) => {
-            if (e.inputType !== 'deleteContentBackward' && e.inputType !== 'deleteContentForward') return;
-
-            const sel = window.getSelection();
-            if (!sel || sel.rangeCount === 0) return;
-
-            if (selectedTable) {
-                e.preventDefault();
-                return;
-            }
-
-            const node = sel.anchorNode;
-            if (!node) return;
-
-            let el = node.nodeType === 1 ? node : node.parentElement;
-
-            const fileInPath = el && el.closest && el.closest('.inserted-file');
-            if (fileInPath && fileInPath.dataset.objectUrl) {
-                URL.revokeObjectURL(fileInPath.dataset.objectUrl);
+        editor.addEventListener('dblclick', (e) => {
+            const linkEl = e.target.closest && e.target.closest('.inserted-link');
+            if (!linkEl) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const url = linkEl.dataset.url;
+            if (url) {
+                window.open(url, '_blank');
             }
         });
 
@@ -1303,17 +1730,20 @@
             if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) return;
             if (target.tagName === 'VIDEO' && target.classList.contains('inserted-video')) return;
             if (target.closest && target.closest('.inserted-file')) return;
+            if (target.closest && target.closest('.inserted-link')) return;
             if (target.closest && target.closest('.inserted-table')) return;
             if (editor.contains(target)) return;
             deselectImage();
             deselectVideo();
             deselectFile();
             deselectTable();
+            deselectLink();
         });
 
         function repositionHandles() {
-            const target = selectedImage || selectedVideo;
-            if (target) showHandles(target);
+            if (selectedImage) showHandles(selectedImage);
+            if (selectedVideo) showHandles(selectedVideo);
+            if (selectedLink) showDeleteOnly(selectedLink);
             if (selectedTable) showTableAddButtons(selectedTable);
         }
 
@@ -1329,6 +1759,8 @@
             if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
             if (selectedFile && !editor.contains(selectedFile)) deselectFile();
             if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+            if (selectedLink && !editor.contains(selectedLink)) deselectLink();
+            if (!isInternalChange) scheduleSave();
         });
 
         const observer = new MutationObserver(() => {
@@ -1336,8 +1768,10 @@
             if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
             if (selectedFile && !editor.contains(selectedFile)) deselectFile();
             if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+            if (selectedLink && !editor.contains(selectedLink)) deselectLink();
+            if (!isInternalChange) scheduleSave();
         });
-        observer.observe(editor, { childList: true, subtree: true });
+        observer.observe(editor, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'src', 'data-align', 'data-url', 'data-fileurl', 'data-filename', 'data-filesize', 'data-filetype'] });
 
         toggleBtn.addEventListener('click', () => {
             isOpen = !isOpen;
@@ -1367,6 +1801,79 @@
             return false;
         }
 
+        function openLinkDialog(mode, range) {
+            linkInsertMode = mode;
+            linkInsertRange = range;
+            linkTitleInput.value = '';
+            linkUrlInput.value = '';
+            linkDialogOverlay.classList.add('show');
+            linkTitleInput.focus();
+        }
+
+        function closeLinkDialog() {
+            linkDialogOverlay.classList.remove('show');
+            linkInsertRange = null;
+            linkInsertMode = null;
+        }
+
+        linkDialogCancel.addEventListener('click', closeLinkDialog);
+
+        linkDialogOverlay.addEventListener('mousedown', (e) => {
+            if (e.target === linkDialogOverlay) closeLinkDialog();
+        });
+
+        linkDialogApply.addEventListener('click', () => {
+            const title = linkTitleInput.value.trim();
+            let url = linkUrlInput.value.trim();
+            if (!title && !url) {
+                closeLinkDialog();
+                return;
+            }
+            if (!url) url = title;
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+
+            const linkEl = document.createElement('a');
+            linkEl.className = 'inserted-link';
+            linkEl.href = url;
+            linkEl.target = '_blank';
+            linkEl.rel = 'noopener noreferrer';
+            linkEl.dataset.url = url;
+            linkEl.contentEditable = 'false';
+
+            const titleSpan = document.createElement('span');
+            titleSpan.className = 'link-title';
+            titleSpan.textContent = title || url;
+
+            const urlSpan = document.createElement('span');
+            urlSpan.className = 'link-url';
+            urlSpan.textContent = url;
+
+            linkEl.appendChild(titleSpan);
+            linkEl.appendChild(urlSpan);
+
+            const range = linkInsertRange || (function() {
+                const sel = window.getSelection();
+                if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                    return sel.getRangeAt(0);
+                }
+                const r = document.createRange();
+                r.selectNodeContents(editor);
+                r.collapse(false);
+                return r;
+            })();
+
+            range.deleteContents();
+            range.insertNode(linkEl);
+            placeCaretAfter(linkEl);
+            editor.focus();
+
+            closeLinkDialog();
+            selectLink(linkEl);
+            scheduleSave();
+        });
+
         function formatText(action) {
             if (action === 'table') {
                 const sel = window.getSelection();
@@ -1379,6 +1886,20 @@
                     range.collapse(false);
                 }
                 insertTable(range);
+                return;
+            }
+
+            if (action === 'link') {
+                const sel = window.getSelection();
+                let range;
+                if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                    range = sel.getRangeAt(0);
+                } else {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                openLinkDialog('format', range);
                 return;
             }
 
@@ -1395,7 +1916,6 @@
                     highlight: 'выделенный текст',
                     larger: 'БОЛЬШОЙ ТЕКСТ',
                     smaller: 'маленький текст',
-                    link: 'текст ссылки',
                     image: 'альт текст',
                     file: 'файл'
                 };
@@ -1446,16 +1966,6 @@
                     wrapper.style.fontSize = '14px';
                     wrapper.style.color = '#64748b';
                     break;
-                case 'link': {
-                    const link = document.createElement('a');
-                    link.href = '#';
-                    link.textContent = text;
-                    link.style.color = '#3b82f6';
-                    link.style.textDecoration = 'underline';
-                    link.style.cursor = 'pointer';
-                    wrapper = link;
-                    break;
-                }
                 case 'image': {
                     const img = document.createElement('span');
                     img.textContent = '🖼️ ' + text;
@@ -1480,7 +1990,7 @@
                     wrapper.textContent = text;
             }
 
-            if (!['link', 'image', 'file'].includes(action)) {
+            if (!['image', 'file'].includes(action)) {
                 wrapper.textContent = text;
             }
 
@@ -1499,6 +2009,7 @@
 
             hideFloatingToolbar();
             editor.focus();
+            scheduleSave();
         }
 
         function positionToolbarNearSelection() {
@@ -1555,6 +2066,16 @@
                 e.preventDefault();
                 const action = btn.dataset.action;
 
+                if (action === 'download-vd5') {
+                    downloadVd5();
+                    return;
+                }
+                if (action === 'open-vd5') {
+                    vd5Input.value = '';
+                    vd5Input.click();
+                    return;
+                }
+
                 if (action === 'image') {
                     pendingInsertAction = 'image';
                     fileInput.accept = 'image/*';
@@ -1580,17 +2101,19 @@
             const isSidebar = sidebar.contains(e.target);
             const isToggle = toggleBtn.contains(e.target);
             const isCtx = contextMenu.contains(e.target);
+            const isLinkDialog = linkDialogOverlay.contains(e.target);
             const isResize = e.target.closest && e.target.closest('.resize-handle');
             const isAlign = e.target.closest && e.target.closest('.align-handle');
             const isDelete = e.target.closest && e.target.closest('.delete-handle');
             const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
-            if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isResize && !isAlign && !isDelete && !isTableBtn) {
+            if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isResize && !isAlign && !isDelete && !isTableBtn) {
                 hideFloatingToolbar();
                 hideContextMenu();
                 deselectImage();
                 deselectVideo();
                 deselectFile();
                 deselectTable();
+                deselectLink();
             }
         });
 
@@ -1667,6 +2190,19 @@
                     return;
                 }
 
+                if (action === 'link') {
+                    let range = contextMenuRange;
+                    if (!range || !editor.contains(range.startContainer)) {
+                        range = document.createRange();
+                        range.selectNodeContents(editor);
+                        range.collapse(false);
+                    }
+                    contextMenuRange = null;
+                    pendingInsertAction = null;
+                    openLinkDialog('context', range);
+                    return;
+                }
+
                 if (action === 'image') {
                     pendingInsertAction = 'image';
                     fileInput.accept = 'image/*';
@@ -1704,36 +2240,83 @@
             sel.addRange(range);
         }
 
+        function getFileIcon(file) {
+            const type = (file.type || '').toLowerCase();
+            const name = (file.name || '').toLowerCase();
+            if (type.includes('pdf') || name.endsWith('.pdf')) return '/data/file-text.svg';
+            if (type.includes('word') || name.endsWith('.doc') || name.endsWith('.docx')) return '/data/file-text.svg';
+            if (type.includes('excel') || type.includes('spreadsheet') || name.endsWith('.xls') || name.endsWith('.xlsx') || name.endsWith('.csv')) return '/data/table.svg';
+            if (type.includes('zip') || type.includes('compressed') || name.endsWith('.zip') || name.endsWith('.rar') || name.endsWith('.7z')) return '/data/file-text.svg';
+            if (type.startsWith('audio/') || name.endsWith('.mp3') || name.endsWith('.wav') || name.endsWith('.ogg')) return '/data/file-text.svg';
+            return '/data/file-text.svg';
+        }
+
+        function uploadFileToServer(file) {
+            return new Promise((resolve, reject) => {
+                const fd = new FormData();
+                fd.append('file', file);
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', '/upload', true);
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const resp = JSON.parse(xhr.responseText);
+                            resolve(resp);
+                        } catch (err) {
+                            reject(err);
+                        }
+                    } else {
+                        reject(new Error('HTTP ' + xhr.status));
+                    }
+                };
+                xhr.onerror = () => reject(new Error('network error'));
+                xhr.send(fd);
+            });
+        }
+
         function insertMediaFile(file, range) {
             const isImage = file.type.startsWith('image/');
             const isVideo = file.type.startsWith('video/');
 
-            if (isImage) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
+            const placeholder = document.createElement('span');
+            placeholder.className = 'inserted-file uploading';
+            placeholder.contentEditable = 'false';
+            const sizeStr = formatFileSize(file.size);
+            placeholder.innerHTML =
+                '<span class="file-icon"><img src="' + getFileIcon(file) + '" alt="" /></span>' +
+                '<span class="file-name">' + escapeHtml(file.name) + '</span>' +
+                '<span class="file-size">' + sizeStr + '</span>';
+
+            range.deleteContents();
+            range.insertNode(placeholder);
+            placeCaretAfter(placeholder);
+
+            uploadFileToServer(file).then((resp) => {
+                const fileUrl = resp.url;
+                const fileName = resp.name || file.name;
+                const fileSize = resp.size || file.size;
+                const fileType = resp.type || file.type || '';
+
+                if (isImage) {
                     const img = document.createElement('img');
-                    img.src = ev.target.result;
-                    img.alt = file.name;
+                    img.src = fileUrl;
+                    img.alt = fileName;
                     img.className = 'inserted-image';
-                    img.title = file.name;
+                    img.title = fileName;
                     img.style.width = '300px';
                     img.style.height = 'auto';
                     img.style.display = 'block';
                     img.style.marginLeft = '0';
                     img.style.marginRight = 'auto';
                     img.dataset.align = 'left';
-                    range.insertNode(img);
+                    img.dataset.fileurl = fileUrl;
+                    placeholder.parentNode.replaceChild(img, placeholder);
                     placeCaretAfter(img);
-                    editor.focus();
-                };
-                reader.readAsDataURL(file);
-            } else if (isVideo) {
-                const reader = new FileReader();
-                reader.onload = (ev) => {
+                } else if (isVideo) {
                     const video = document.createElement('video');
-                    video.src = ev.target.result;
+                    video.src = fileUrl;
                     video.className = 'inserted-video';
-                    video.title = file.name;
+                    video.title = fileName;
                     video.controls = true;
                     video.style.width = '400px';
                     video.style.height = 'auto';
@@ -1742,36 +2325,35 @@
                     video.style.marginRight = 'auto';
                     video.dataset.align = 'left';
                     video.style.borderRadius = '8px';
-                    range.insertNode(video);
+                    video.dataset.fileurl = fileUrl;
+                    placeholder.parentNode.replaceChild(video, placeholder);
                     placeCaretAfter(video);
-                    editor.focus();
-                };
-                reader.readAsDataURL(file);
-            } else {
-                const fileEl = document.createElement('a');
-                fileEl.className = 'inserted-file';
-                fileEl.href = '#';
-                fileEl.title = file.name + ' (двойной клик — открыть)';
-                fileEl.dataset.filename = file.name;
-                fileEl.dataset.filesize = file.size;
-                fileEl.dataset.filetype = file.type || 'unknown';
-                fileEl.contentEditable = 'false';
+                } else {
+                    const fileEl = document.createElement('a');
+                    fileEl.className = 'inserted-file';
+                    fileEl.href = fileUrl;
+                    fileEl.title = fileName + ' (двойной клик — открыть)';
+                    fileEl.dataset.filename = fileName;
+                    fileEl.dataset.filesize = fileSize;
+                    fileEl.dataset.filetype = fileType;
+                    fileEl.dataset.fileurl = fileUrl;
+                    fileEl.contentEditable = 'false';
 
-                const objectUrl = URL.createObjectURL(file);
-                fileEl.dataset.objectUrl = objectUrl;
-
-                const iconSrc = '/data/file-text.svg';
-                const sizeStr = formatFileSize(file.size);
-                fileEl.innerHTML = `
-                    <span class="file-icon"><img src="${iconSrc}" alt="" /></span>
-                    <span class="file-name">${escapeHtml(file.name)}</span>
-                    <span class="file-size">${sizeStr}</span>
-                `;
-
-                range.insertNode(fileEl);
-                placeCaretAfter(fileEl);
+                    const iconSrc = getFileIcon({ name: fileName, type: fileType });
+                    fileEl.innerHTML =
+                        '<span class="file-icon"><img src="' + iconSrc + '" alt="" /></span>' +
+                        '<span class="file-name">' + escapeHtml(fileName) + '</span>' +
+                        '<span class="file-size">' + formatFileSize(fileSize) + '</span>';
+                    placeholder.parentNode.replaceChild(fileEl, placeholder);
+                    placeCaretAfter(fileEl);
+                }
                 editor.focus();
-            }
+                scheduleSave();
+            }).catch(() => {
+                placeholder.classList.remove('uploading');
+                placeholder.classList.add('error');
+                placeholder.querySelector('.file-size').textContent = 'ошибка';
+            });
         }
 
         fileInput.addEventListener('change', () => {
@@ -1805,7 +2387,6 @@
 
             if (!range) return;
 
-            range.deleteContents();
             insertMediaFile(file, range);
 
             contextMenuRange = null;
@@ -1815,6 +2396,7 @@
         });
 
         function formatFileSize(bytes) {
+            bytes = parseInt(bytes, 10) || 0;
             if (bytes === 0) return '0 Б';
             const k = 1024;
             const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
@@ -1852,24 +2434,20 @@
             return range;
         }
 
-        function updateDropIndicator(clientY) {
-            const range = getRangeFromPoint(0, clientY);
+        function updateDropTarget(clientX, clientY) {
+            const range = getRangeFromPoint(clientX, clientY);
             if (range && editor.contains(range.startContainer)) {
-                const rect = range.getBoundingClientRect();
-                if (rect) {
-                    let top = rect.top;
-                    if (rect.height === 0) top = rect.top;
-                    dropIndicator.style.top = top + 'px';
-                    dropIndicator.classList.add('show');
-                    return range;
-                }
+                dropTargetRange = range;
+            } else {
+                dropTargetRange = null;
             }
-            const editorRect = editor.getBoundingClientRect();
-            if (clientY >= editorRect.top && clientY <= editorRect.bottom) {
-                dropIndicator.style.top = clientY + 'px';
-                dropIndicator.classList.add('show');
+        }
+
+        function updateDragPreviewPosition(clientX, clientY) {
+            if (dragPreview.classList.contains('show')) {
+                dragPreview.style.left = (clientX + 16) + 'px';
+                dragPreview.style.top = (clientY + 16) + 'px';
             }
-            return null;
         }
 
         function handleDragEnter(e) {
@@ -1886,7 +2464,8 @@
                 e.dataTransfer.dropEffect = 'copy';
             }
 
-            const range = updateDropIndicator(e.clientY);
+            updateDropTarget(e.clientX, e.clientY);
+            updateDragPreviewPosition(e.clientX, e.clientY);
 
             const items = e.dataTransfer && e.dataTransfer.items;
             if (items && items.length > 0) {
@@ -1935,9 +2514,9 @@
             if (dragCounter <= 0) {
                 dragCounter = 0;
                 isDragOver = false;
-                dropIndicator.classList.remove('show');
                 dragPreview.classList.remove('show');
                 dragPreview.removeAttribute('data-preview-src');
+                dropTargetRange = null;
             }
         }
 
@@ -1945,25 +2524,13 @@
             e.preventDefault();
             dragCounter = 0;
             isDragOver = false;
-            dropIndicator.classList.remove('show');
             dragPreview.classList.remove('show');
             dragPreview.removeAttribute('data-preview-src');
 
             const files = e.dataTransfer && e.dataTransfer.files;
             if (!files || files.length === 0) return;
 
-            let range = null;
-            if (document.caretRangeFromPoint) {
-                range = document.caretRangeFromPoint(e.clientX, e.clientY);
-            } else if (document.caretPositionFromPoint) {
-                const pos = document.caretPositionFromPoint(e.clientX, e.clientY);
-                if (pos) {
-                    range = document.createRange();
-                    range.setStart(pos.offsetNode, pos.offset);
-                    range.collapse(true);
-                }
-            }
-
+            let range = dropTargetRange;
             if (!range || !editor.contains(range.startContainer)) {
                 range = document.createRange();
                 range.selectNodeContents(editor);
@@ -1986,9 +2553,9 @@
 
             range.deleteContents();
 
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                if (i === 0) {
+            const filesArr = Array.from(files);
+            filesArr.forEach((file, idx) => {
+                if (idx === 0) {
                     insertMediaFile(file, range);
                 } else {
                     const newRange = document.createRange();
@@ -1996,7 +2563,9 @@
                     newRange.collapse(false);
                     insertMediaFile(file, newRange);
                 }
-            }
+            });
+
+            dropTargetRange = null;
         }
 
         editorContainer.addEventListener('dragenter', handleDragEnter);
@@ -2017,6 +2586,550 @@
                 e.preventDefault();
             }
         });
+
+        let dragSourceElement = null;
+        let dragSourceType = null;
+        let dragStartX = 0, dragStartY = 0;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let isDragging = false;
+        let dragGhostElement = null;
+
+        function startInternalDrag(e, element, type) {
+            dragSourceElement = element;
+            dragSourceType = type;
+            dragStartX = e.clientX;
+            dragStartY = e.clientY;
+            const rect = element.getBoundingClientRect();
+            dragOffsetX = e.clientX - rect.left;
+            dragOffsetY = e.clientY - rect.top;
+            isDragging = false;
+        }
+
+        function onInternalDragMove(e) {
+            if (!dragSourceElement) return;
+            const dx = Math.abs(e.clientX - dragStartX);
+            const dy = Math.abs(e.clientY - dragStartY);
+            if (!isDragging && (dx > 5 || dy > 5)) {
+                isDragging = true;
+                createDragGhost();
+            }
+            if (isDragging) {
+                updateDragGhost(e.clientX, e.clientY);
+                updateDropTarget(e.clientX, e.clientY);
+            }
+        }
+
+        function onInternalDragEnd(e) {
+            if (!dragSourceElement) return;
+            if (isDragging && dropTargetRange) {
+                let range = dropTargetRange;
+                if (!editor.contains(range.startContainer)) {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                range.deleteContents();
+                range.insertNode(dragSourceElement);
+                placeCaretAfter(dragSourceElement);
+                scheduleSave();
+            }
+            destroyDragGhost();
+            dragSourceElement = null;
+            dragSourceType = null;
+            isDragging = false;
+            dropTargetRange = null;
+        }
+
+        function createDragGhost() {
+            if (dragGhostElement) return;
+            dragGhostElement = dragSourceElement.cloneNode(true);
+            dragGhostElement.style.position = 'fixed';
+            dragGhostElement.style.pointerEvents = 'none';
+            dragGhostElement.style.opacity = '0.55';
+            dragGhostElement.style.zIndex = '1002';
+            dragGhostElement.style.borderRadius = '8px';
+            dragGhostElement.style.boxShadow = '0 8px 24px rgba(0,0,0,0.25)';
+            dragGhostElement.style.transform = 'scale(0.9)';
+            dragGhostElement.style.maxWidth = '200px';
+            dragGhostElement.style.maxHeight = '150px';
+            dragGhostElement.style.objectFit = 'contain';
+            const rect = dragSourceElement.getBoundingClientRect();
+            dragGhostElement.style.width = rect.width + 'px';
+            dragGhostElement.style.height = rect.height + 'px';
+            document.body.appendChild(dragGhostElement);
+        }
+
+        function updateDragGhost(clientX, clientY) {
+            if (!dragGhostElement) return;
+            dragGhostElement.style.left = (clientX - dragOffsetX) + 'px';
+            dragGhostElement.style.top = (clientY - dragOffsetY) + 'px';
+        }
+
+        function destroyDragGhost() {
+            if (dragGhostElement && dragGhostElement.parentNode) {
+                dragGhostElement.parentNode.removeChild(dragGhostElement);
+            }
+            dragGhostElement = null;
+        }
+
+        editor.addEventListener('mousedown', (e) => {
+            const target = e.target;
+            if (target.closest && target.closest('.resize-handle')) return;
+            if (target.closest && target.closest('.align-handle')) return;
+            if (target.closest && target.closest('.delete-handle')) return;
+            if (target.closest && target.closest('.table-add-col')) return;
+            if (target.closest && target.closest('.table-add-row')) return;
+            if (target.closest && target.closest('.table-delete-handle')) return;
+
+            if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) {
+                startInternalDrag(e, target, 'image');
+                return;
+            }
+            if (target.tagName === 'VIDEO' && target.classList.contains('inserted-video')) {
+                startInternalDrag(e, target, 'video');
+                return;
+            }
+            const fileEl = target.closest && target.closest('.inserted-file');
+            if (fileEl) {
+                startInternalDrag(e, fileEl, 'file');
+                return;
+            }
+            const linkEl = target.closest && target.closest('.inserted-link');
+            if (linkEl) {
+                startInternalDrag(e, linkEl, 'link');
+                return;
+            }
+            const tableEl = target.closest && target.closest('.inserted-table');
+            if (tableEl) {
+                startInternalDrag(e, tableEl, 'table');
+                return;
+            }
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (dragSourceElement) {
+                onInternalDragMove(e);
+            }
+        });
+
+        document.addEventListener('mouseup', (e) => {
+            if (dragSourceElement) {
+                onInternalDragEnd(e);
+            }
+        });
+
+        editor.addEventListener('dragstart', (e) => {
+            e.preventDefault();
+        });
+
+        function hideFilePreview() {
+            filePreviewTooltip.classList.remove('show');
+            previewTooltipTarget = null;
+            if (previewTooltipTimer) {
+                clearTimeout(previewTooltipTimer);
+                previewTooltipTimer = null;
+            }
+        }
+
+        function positionFilePreview(rect) {
+            const tooltipRect = filePreviewTooltip.getBoundingClientRect();
+            let left = rect.left;
+            let top = rect.bottom + 10;
+            if (left + tooltipRect.width > window.innerWidth - 10) {
+                left = window.innerWidth - tooltipRect.width - 10;
+            }
+            if (left < 10) left = 10;
+            if (top + tooltipRect.height > window.innerHeight - 10) {
+                top = rect.top - tooltipRect.height - 10;
+            }
+            if (top < 10) top = 10;
+            filePreviewTooltip.style.left = left + 'px';
+            filePreviewTooltip.style.top = top + 'px';
+        }
+
+        function isPreviewableFile(fileType, fileName) {
+            const type = (fileType || '').toLowerCase();
+            const name = (fileName || '').toLowerCase();
+            if (type.startsWith('text/')) return true;
+            if (type.startsWith('image/')) return true;
+            if (type.startsWith('video/')) return true;
+            if (type.startsWith('audio/')) return true;
+            if (type.includes('pdf')) return true;
+            if (type.includes('json')) return true;
+            if (type.includes('xml')) return true;
+            if (type.includes('javascript')) return true;
+            if (type.includes('html')) return true;
+            if (type.includes('css')) return true;
+            if (name.endsWith('.txt')) return true;
+            if (name.endsWith('.md')) return true;
+            if (name.endsWith('.log')) return true;
+            if (name.endsWith('.csv')) return true;
+            if (name.endsWith('.json')) return true;
+            if (name.endsWith('.xml')) return true;
+            if (name.endsWith('.js')) return true;
+            if (name.endsWith('.ts')) return true;
+            if (name.endsWith('.html')) return true;
+            if (name.endsWith('.css')) return true;
+            if (name.endsWith('.py')) return true;
+            if (name.endsWith('.java')) return true;
+            if (name.endsWith('.c')) return true;
+            if (name.endsWith('.cpp')) return true;
+            if (name.endsWith('.h')) return true;
+            if (name.endsWith('.pdf')) return true;
+            return false;
+        }
+
+        function getFileCategory(fileType, fileName) {
+            const type = (fileType || '').toLowerCase();
+            const name = (fileName || '').toLowerCase();
+            if (type.startsWith('image/')) return 'image';
+            if (type.startsWith('video/')) return 'video';
+            if (type.startsWith('audio/')) return 'audio';
+            if (type.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+            if (type.startsWith('text/') || type.includes('json') || type.includes('xml') ||
+                type.includes('javascript') || type.includes('html') || type.includes('css') ||
+                name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.log') ||
+                name.endsWith('.csv') || name.endsWith('.json') || name.endsWith('.xml') ||
+                name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.html') ||
+                name.endsWith('.css') || name.endsWith('.py') || name.endsWith('.java') ||
+                name.endsWith('.c') || name.endsWith('.cpp') || name.endsWith('.h')) return 'text';
+            return 'other';
+        }
+
+        function escapeHtmlText(str) {
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function showFilePreviewLoading() {
+            filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                '<div class="preview-loading"><span class="spinner"></span><span>Загрузка предпросмотра…</span></div>';
+        }
+
+        function renderTextPreview(text, maxChars) {
+            const limit = maxChars || 1200;
+            let display = text;
+            let truncated = false;
+            if (display.length > limit) {
+                display = display.slice(0, limit);
+                truncated = true;
+            }
+            let html = '<div class="text-preview">' + escapeHtmlText(display) + '</div>';
+            if (truncated) {
+                html += '<div style="margin-top:6px;color:#94a3b8;font-size:11px;">… ещё ' +
+                    (text.length - limit) + ' символов</div>';
+            }
+            return html;
+        }
+
+        function loadFilePreviewData(fileEl) {
+            const fileUrl = fileEl.dataset.fileurl || fileEl.dataset.objectUrl;
+            const fileName = fileEl.dataset.filename || 'file';
+            const fileType = fileEl.dataset.filetype || '';
+            const fileSize = parseInt(fileEl.dataset.filesize || '0', 10);
+            const requestId = ++previewTooltipRequestId;
+
+            filePreviewTooltip.querySelector('.preview-name').textContent = fileName;
+            filePreviewTooltip.querySelector('.preview-type').textContent = fileType || 'неизвестный тип';
+            filePreviewTooltip.querySelector('.preview-size').textContent = formatFileSize(fileSize);
+
+            if (!fileUrl) {
+                filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                    '<div style="color:#94a3b8;font-size:12px;">Предпросмотр недоступен</div>';
+                return;
+            }
+
+            const category = getFileCategory(fileType, fileName);
+
+            if (category === 'image') {
+                const img = document.createElement('img');
+                img.onload = () => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                    filePreviewTooltip.querySelector('.preview-body').appendChild(img);
+                    if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                };
+                img.onerror = () => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                        '<div style="color:#94a3b8;font-size:12px;">Не удалось загрузить изображение</div>';
+                };
+                img.src = fileUrl;
+                return;
+            }
+
+            if (category === 'video') {
+                const video = document.createElement('video');
+                video.src = fileUrl;
+                video.controls = false;
+                video.muted = true;
+                video.preload = 'metadata';
+                video.onloadedmetadata = () => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                    filePreviewTooltip.querySelector('.preview-body').appendChild(video);
+                    if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                };
+                video.onerror = () => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                        '<div style="color:#94a3b8;font-size:12px;">Не удалось загрузить видео</div>';
+                };
+                return;
+            }
+
+            if (category === 'audio') {
+                const audio = document.createElement('audio');
+                audio.src = fileUrl;
+                audio.controls = true;
+                audio.preload = 'metadata';
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                filePreviewTooltip.querySelector('.preview-body').appendChild(audio);
+                if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                return;
+            }
+
+            if (category === 'pdf') {
+                const iframe = document.createElement('iframe');
+                iframe.src = fileUrl + '#toolbar=0&navpanes=0&scrollbar=0&view=FitH';
+                iframe.style.width = '340px';
+                iframe.style.height = '200px';
+                iframe.style.border = 'none';
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                filePreviewTooltip.querySelector('.preview-body').appendChild(iframe);
+                if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                return;
+            }
+
+            if (category === 'text') {
+                showFilePreviewLoading();
+                fetch(fileUrl)
+                    .then((res) => res.text())
+                    .then((text) => {
+                        if (requestId !== previewTooltipRequestId) return;
+                        filePreviewTooltip.querySelector('.preview-body').innerHTML = renderTextPreview(text, 1200);
+                        if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                    })
+                    .catch(() => {
+                        if (requestId !== previewTooltipRequestId) return;
+                        filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                            '<div style="color:#94a3b8;font-size:12px;">Не удалось прочитать файл</div>';
+                    });
+                return;
+            }
+
+            filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                '<div style="color:#94a3b8;font-size:12px;">Предпросмотр для этого типа файла недоступен</div>';
+        }
+
+        function showFilePreview(fileEl) {
+            if (!fileEl) return;
+            previewTooltipTarget = fileEl;
+            loadFilePreviewData(fileEl);
+            filePreviewTooltip.classList.add('show');
+            requestAnimationFrame(() => {
+                if (previewTooltipTarget) {
+                    positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                }
+            });
+        }
+
+        editor.addEventListener('mouseover', (e) => {
+            const fileEl = e.target.closest && e.target.closest('.inserted-file');
+            if (!fileEl) return;
+            if (!isPreviewableFile(fileEl.dataset.filetype, fileEl.dataset.filename)) return;
+            if (previewTooltipTarget === fileEl) return;
+            if (previewTooltipTimer) {
+                clearTimeout(previewTooltipTimer);
+            }
+            previewTooltipTimer = setTimeout(() => {
+                showFilePreview(fileEl);
+            }, 350);
+        });
+
+        editor.addEventListener('mouseout', (e) => {
+            const fileEl = e.target.closest && e.target.closest('.inserted-file');
+            if (!fileEl) return;
+            const related = e.relatedTarget;
+            if (related && fileEl.contains(related)) return;
+            if (related && related.closest && related.closest('.inserted-file') === fileEl) return;
+            if (previewTooltipTimer) {
+                clearTimeout(previewTooltipTimer);
+                previewTooltipTimer = null;
+            }
+            hideFilePreview();
+        });
+
+        filePreviewTooltip.addEventListener('mouseenter', () => {
+            if (previewTooltipTimer) {
+                clearTimeout(previewTooltipTimer);
+                previewTooltipTimer = null;
+            }
+        });
+
+        filePreviewTooltip.addEventListener('mouseleave', () => {
+            hideFilePreview();
+        });
+
+        editor.addEventListener('scroll', hideFilePreview);
+        window.addEventListener('scroll', hideFilePreview);
+        window.addEventListener('resize', hideFilePreview);
+
+        document.addEventListener('mousedown', (e) => {
+            if (!e.target.closest || !e.target.closest('.inserted-file')) {
+                hideFilePreview();
+            }
+        });
+
+        function showSaveIndicator(state, text) {
+            saveIndicator.classList.remove('saving', 'saved', 'error');
+            if (state) saveIndicator.classList.add(state);
+            saveIndicator.textContent = text || '';
+            saveIndicator.classList.add('show');
+        }
+
+        function hideSaveIndicator(delay) {
+            setTimeout(() => {
+                saveIndicator.classList.remove('show');
+            }, delay || 1200);
+        }
+
+        function collectDocumentState() {
+            return {
+                format: VD5_FORMAT,
+                version: VD5_VERSION,
+                savedAt: new Date().toISOString(),
+                content: editor.innerHTML
+            };
+        }
+
+        function saveToLocalStorage() {
+            try {
+                const state = collectDocumentState();
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                showSaveIndicator('saved', 'Сохранено');
+                hideSaveIndicator(1400);
+            } catch (err) {
+                showSaveIndicator('error', 'Ошибка сохранения');
+                hideSaveIndicator(2000);
+            }
+        }
+
+        function scheduleSave() {
+            if (isInternalChange) return;
+            if (saveTimer) clearTimeout(saveTimer);
+            showSaveIndicator('saving', 'Сохранение…');
+            saveTimer = setTimeout(() => {
+                saveToLocalStorage();
+                saveTimer = null;
+            }, 500);
+        }
+
+        function loadFromLocalStorage() {
+            try {
+                const raw = localStorage.getItem(STORAGE_KEY);
+                if (!raw) return false;
+                const state = JSON.parse(raw);
+                if (state && typeof state.content === 'string') {
+                    isInternalChange = true;
+                    editor.innerHTML = state.content;
+                    isInternalChange = false;
+                    return true;
+                }
+            } catch (err) {
+                return false;
+            }
+            return false;
+        }
+
+        function downloadVd5() {
+            const state = collectDocumentState();
+            const json = JSON.stringify(state, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+            a.href = url;
+            a.download = 'document-' + stamp + '.vd5';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showSaveIndicator('saved', 'Файл .vd5 скачан');
+            hideSaveIndicator(1800);
+        }
+
+        function openVd5File(file) {
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                try {
+                    const state = JSON.parse(ev.target.result);
+                    if (!state || typeof state.content !== 'string') {
+                        showSaveIndicator('error', 'Неверный формат .vd5');
+                        hideSaveIndicator(2200);
+                        return;
+                    }
+                    isInternalChange = true;
+                    editor.innerHTML = state.content;
+                    isInternalChange = false;
+                    deselectImage();
+                    deselectVideo();
+                    deselectFile();
+                    deselectTable();
+                    deselectLink();
+                    scheduleSave();
+                    showSaveIndicator('saved', 'Файл .vd5 открыт');
+                    hideSaveIndicator(1800);
+                } catch (err) {
+                    showSaveIndicator('error', 'Не удалось прочитать .vd5');
+                    hideSaveIndicator(2200);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        vd5Input.addEventListener('change', () => {
+            const file = vd5Input.files && vd5Input.files[0];
+            if (!file) return;
+            openVd5File(file);
+            vd5Input.value = '';
+        });
+
+        document.addEventListener('keydown', (e) => {
+            const mod = e.ctrlKey || e.metaKey;
+            if (!mod) return;
+            if (e.key === 's' || e.key === 'S') {
+                e.preventDefault();
+                if (saveTimer) {
+                    clearTimeout(saveTimer);
+                    saveTimer = null;
+                }
+                saveToLocalStorage();
+                return;
+            }
+            if (e.key === 'o' || e.key === 'O') {
+                e.preventDefault();
+                vd5Input.value = '';
+                vd5Input.click();
+                return;
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+                saveToLocalStorage();
+            }
+        });
+
+        loadFromLocalStorage();
     </script>
 </body>
 </html>
