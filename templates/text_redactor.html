@@ -535,6 +535,24 @@
             display: block;
         }
 
+        .drop-placeholder {
+            border: 2px dashed #3b82f6 !important;
+            background: rgba(59, 130, 246, 0.1) !important;
+            border-radius: 8px;
+            opacity: 0.5 !important;
+            pointer-events: none !important;
+            box-shadow: none !important;
+            margin: 4px 0;
+            display: inline-block;
+        }
+        .drop-placeholder.inserted-table,
+        .drop-placeholder.inserted-image,
+        .drop-placeholder.inserted-video {
+            display: block !important;
+            width: 100%;
+            min-height: 40px;
+        }
+
         .file-preview-tooltip {
             position: fixed;
             z-index: 1500;
@@ -1100,6 +1118,7 @@
         let draggedElement = null;
         let dragElementGhost = null;
         let dropTargetRange = null;
+        let dropPlaceholder = null;
 
         let previewTooltipTimer = null;
         let previewTooltipTarget = null;
@@ -2434,12 +2453,36 @@
             return range;
         }
 
+        function updateDropPlaceholder(range) {
+            if (!dropPlaceholder) {
+                dropPlaceholder = dragSourceElement.cloneNode(true);
+                dropPlaceholder.classList.add('drop-placeholder');
+                dropPlaceholder.style.pointerEvents = 'none';
+            }
+            if (dropPlaceholder.parentNode) {
+                dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+            }
+            if (range.startContainer === dropPlaceholder || (range.startContainer.parentNode && range.startContainer.parentNode === dropPlaceholder)) {
+                return;
+            }
+            range.insertNode(dropPlaceholder);
+        }
+
+        function removeDropPlaceholder() {
+            if (dropPlaceholder && dropPlaceholder.parentNode) {
+                dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+            }
+            dropPlaceholder = null;
+        }
+
         function updateDropTarget(clientX, clientY) {
             const range = getRangeFromPoint(clientX, clientY);
             if (range && editor.contains(range.startContainer)) {
                 dropTargetRange = range;
+                updateDropPlaceholder(range);
             } else {
                 dropTargetRange = null;
+                removeDropPlaceholder();
             }
         }
 
@@ -2517,6 +2560,7 @@
                 dragPreview.classList.remove('show');
                 dragPreview.removeAttribute('data-preview-src');
                 dropTargetRange = null;
+                removeDropPlaceholder();
             }
         }
 
@@ -2526,6 +2570,7 @@
             isDragOver = false;
             dragPreview.classList.remove('show');
             dragPreview.removeAttribute('data-preview-src');
+            removeDropPlaceholder();
 
             const files = e.dataTransfer && e.dataTransfer.files;
             if (!files || files.length === 0) return;
@@ -2621,19 +2666,22 @@
 
         function onInternalDragEnd(e) {
             if (!dragSourceElement) return;
-            if (isDragging && dropTargetRange) {
+            if (isDragging && dropTargetRange && dropPlaceholder) {
                 let range = dropTargetRange;
-                if (!editor.contains(range.startContainer)) {
+                if (!editor.contains(range.startContainer) || range.startContainer === dropPlaceholder || (range.startContainer.parentNode && range.startContainer.parentNode === dropPlaceholder)) {
                     range = document.createRange();
                     range.selectNodeContents(editor);
                     range.collapse(false);
                 }
-                range.deleteContents();
+                if (dropPlaceholder.parentNode) {
+                    dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+                }
                 range.insertNode(dragSourceElement);
                 placeCaretAfter(dragSourceElement);
                 scheduleSave();
             }
             destroyDragGhost();
+            removeDropPlaceholder();
             dragSourceElement = null;
             dragSourceType = null;
             isDragging = false;
