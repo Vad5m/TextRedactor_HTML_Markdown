@@ -88,6 +88,41 @@ pointer-events: none;
 width: 40px; height: 1px; background: #475569; margin: 4px 0;
 flex-shrink: 0;
 }
+.top-controls {
+position: fixed;
+top: 12px;
+right: 12px;
+display: flex;
+align-items: center;
+gap: 6px;
+z-index: 600;
+background: #1e293b;
+padding: 6px;
+border-radius: 14px;
+box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+}
+.top-controls button {
+width: 36px;
+height: 36px;
+border: none;
+background: #334155;
+border-radius: 9px;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 0;
+transition: background 0.15s, transform 0.1s, opacity 0.15s;
+}
+.top-controls button:hover:not(:disabled) { background: #475569; transform: translateY(-1px); }
+.top-controls button:active:not(:disabled) { background: #0f172a; transform: scale(0.94); }
+.top-controls button:disabled { opacity: 0.35; cursor: not-allowed; }
+.top-controls button img {
+width: 20px; height: 20px;
+display: block;
+pointer-events: none;
+filter: brightness(0) invert(1);
+}
 .main-area {
 margin-left: 0; width: 100%; height: 100vh;
 display: flex; align-items: stretch;
@@ -101,6 +136,7 @@ width: calc(100% - 64px);
 .editor-container {
 width: 100%; height: 100%;
 padding: 20px 30px;
+padding-top: 64px;
 background: #f8fafc;
 overflow-y: auto;
 position: relative;
@@ -119,12 +155,8 @@ content: 'Введите текст...';
 color: #94a3b8;
 }
 #editor:focus:empty::before { content: ''; }
-#editor.readonly {
-cursor: default;
-}
-#editor.readonly:empty::before {
-content: '';
-}
+#editor.readonly { cursor: default; }
+#editor.readonly:empty::before { content: ''; }
 .save-indicator {
 position: fixed;
 bottom: 16px;
@@ -144,10 +176,7 @@ display: flex;
 align-items: center;
 gap: 6px;
 }
-.save-indicator.show {
-opacity: 1;
-transform: translateY(0);
-}
+.save-indicator.show { opacity: 1; transform: translateY(0); }
 .save-indicator.saving { background: #3b82f6; }
 .save-indicator.saved { background: #16a34a; }
 .save-indicator.error { background: #ef4444; }
@@ -345,9 +374,7 @@ position: relative;
 transition: height 0.15s;
 overflow: hidden;
 }
-.video-progress-bar:hover {
-height: 6px;
-}
+.video-progress-bar:hover { height: 6px; }
 .video-progress-fill {
 height: 100%;
 width: 0%;
@@ -381,9 +408,7 @@ border-radius: 50%;
 transition: background 0.15s;
 padding: 0;
 }
-.video-icon-btn:hover {
-background: rgba(255, 255, 255, 0.15);
-}
+.video-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
 .video-icon-btn svg {
 width: 18px;
 height: 18px;
@@ -434,13 +459,8 @@ outline: none;
 font-family: inherit;
 transition: background 0.15s;
 }
-.video-speed-select:hover {
-background: rgba(0, 0, 0, 0.75);
-}
-.video-speed-select option {
-background: #1e1e24;
-color: #fff;
-}
+.video-speed-select:hover { background: rgba(0, 0, 0, 0.75); }
+.video-speed-select option { background: #1e1e24; color: #fff; }
 
 .inserted-file {
 display: inline-flex;
@@ -483,13 +503,8 @@ filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-
 }
 .inserted-file .file-name { font-weight: 600; }
 .inserted-file .file-size { color: #64748b; font-size: 12px; }
-.inserted-file.uploading {
-opacity: 0.6;
-pointer-events: none;
-}
-.inserted-file.uploading .file-size::after {
-content: ' …';
-}
+.inserted-file.uploading { opacity: 0.6; pointer-events: none; }
+.inserted-file.uploading .file-size::after { content: ' …'; }
 .inserted-file.error {
 background: #fef2f2;
 border-color: #fecaca;
@@ -547,14 +562,8 @@ transition: transform 0.1s, background 0.15s;
 user-select: none;
 pointer-events: auto;
 }
-.resize-handle:hover {
-background: #3b82f6;
-transform: scale(1.1);
-}
-.resize-handle:active {
-background: #2563eb;
-transform: scale(0.95);
-}
+.resize-handle:hover { background: #3b82f6; transform: scale(1.1); }
+.resize-handle:active { background: #2563eb; transform: scale(0.95); }
 .resize-handle svg {
 width: 18px;
 height: 18px;
@@ -579,14 +588,8 @@ transition: transform 0.1s, background 0.15s;
 user-select: none;
 pointer-events: auto;
 }
-.align-handle:hover {
-background: #3b82f6;
-transform: scale(1.1);
-}
-.align-handle:active {
-background: #2563eb;
-transform: scale(0.95);
-}
+.align-handle:hover { background: #3b82f6; transform: scale(1.1); }
+.align-handle:active { background: #2563eb; transform: scale(0.95); }
 .align-handle svg {
 width: 18px;
 height: 18px;
@@ -611,14 +614,8 @@ transition: transform 0.1s, background 0.15s;
 user-select: none;
 pointer-events: auto;
 }
-.delete-handle:hover {
-background: #dc2626;
-transform: scale(1.1);
-}
-.delete-handle:active {
-background: #b91c1c;
-transform: scale(0.95);
-}
+.delete-handle:hover { background: #dc2626; transform: scale(1.1); }
+.delete-handle:active { background: #b91c1c; transform: scale(0.95); }
 .delete-handle svg {
 width: 18px;
 height: 18px;
@@ -638,9 +635,7 @@ opacity: 0;
 transition: opacity 0.15s;
 box-shadow: 0 0 8px rgba(59,130,246,0.8);
 }
-.drop-indicator.show {
-opacity: 1;
-}
+.drop-indicator.show { opacity: 1; }
 .drop-indicator::before {
 content: '';
 position: absolute;
@@ -666,9 +661,7 @@ background: #f8fafc;
 display: none;
 transition: opacity 0.15s;
 }
-.drag-preview.show {
-display: block;
-}
+.drag-preview.show { display: block; }
 .drop-placeholder {
 border: 2px dashed #3b82f6 !important;
 background: rgba(59, 130, 246, 0.1) !important;
@@ -705,10 +698,7 @@ color: #0f172a;
 line-height: 1.5;
 overflow: hidden;
 }
-.file-preview-tooltip.show {
-opacity: 1;
-transform: translateY(0);
-}
+.file-preview-tooltip.show { opacity: 1; transform: translateY(0); }
 .file-preview-tooltip .preview-header {
 display: flex;
 align-items: center;
@@ -852,27 +842,13 @@ transition: transform 0.1s, background 0.15s;
 user-select: none;
 }
 .table-add-col:hover,
-.table-add-row:hover {
-background: #3b82f6;
-transform: scale(1.12);
-}
+.table-add-row:hover { background: #3b82f6; transform: scale(1.12); }
 .table-add-col:active,
-.table-add-row:active {
-background: #2563eb;
-transform: scale(0.95);
-}
+.table-add-row:active { background: #2563eb; transform: scale(0.95); }
 .table-add-col.show,
-.table-add-row.show {
-display: flex;
-}
-.table-add-col::before {
-content: '+';
-transform: translateY(-1px);
-}
-.table-add-row::before {
-content: '+';
-transform: translateY(-1px);
-}
+.table-add-row.show { display: flex; }
+.table-add-col::before { content: '+'; transform: translateY(-1px); }
+.table-add-row::before { content: '+'; transform: translateY(-1px); }
 .table-delete-handle {
 position: absolute;
 width: 26px;
@@ -891,17 +867,9 @@ padding: 0;
 transition: transform 0.1s, background 0.15s;
 user-select: none;
 }
-.table-delete-handle:hover {
-background: #dc2626;
-transform: scale(1.12);
-}
-.table-delete-handle:active {
-background: #b91c1c;
-transform: scale(0.95);
-}
-.table-delete-handle.show {
-display: flex;
-}
+.table-delete-handle:hover { background: #dc2626; transform: scale(1.12); }
+.table-delete-handle:active { background: #b91c1c; transform: scale(0.95); }
+.table-delete-handle.show { display: flex; }
 .table-delete-handle svg {
 width: 16px;
 height: 16px;
@@ -920,10 +888,7 @@ justify-content: center;
 opacity: 0;
 transition: opacity 0.2s;
 }
-.link-dialog-overlay.show {
-display: flex;
-opacity: 1;
-}
+.link-dialog-overlay.show { display: flex; opacity: 1; }
 .link-dialog {
 background: #ffffff;
 border-radius: 16px;
@@ -934,9 +899,7 @@ box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
 transform: scale(0.95);
 transition: transform 0.2s;
 }
-.link-dialog-overlay.show .link-dialog {
-transform: scale(1);
-}
+.link-dialog-overlay.show .link-dialog { transform: scale(1); }
 .link-dialog h3 {
 font-size: 18px;
 font-weight: 600;
@@ -982,15 +945,9 @@ cursor: pointer;
 transition: background 0.15s;
 border: none;
 }
-.link-dialog .dialog-actions .btn-cancel {
-background: #f1f5f9;
-color: #475569;
-}
+.link-dialog .dialog-actions .btn-cancel { background: #f1f5f9; color: #475569; }
 .link-dialog .dialog-actions .btn-cancel:hover { background: #e2e8f0; }
-.link-dialog .dialog-actions .btn-apply {
-background: #3b82f6;
-color: #ffffff;
-}
+.link-dialog .dialog-actions .btn-apply { background: #3b82f6; color: #ffffff; }
 .link-dialog .dialog-actions .btn-apply:hover { background: #2563eb; }
 @media (max-width: 600px) {
 .sidebar { width: 54px; height: 460px; padding: 10px 0; gap: 4px; left: -54px; }
@@ -1005,8 +962,11 @@ color: #ffffff;
 .floating-toolbar button svg,
 .floating-toolbar button img { width: 17px; height: 17px; }
 .floating-toolbar .tool-label { font-size: 9px; }
-.editor-container { padding: 16px 20px; }
+.editor-container { padding: 16px 20px; padding-top: 64px; }
 #editor { font-size: 16px; }
+.top-controls { top: 8px; right: 8px; padding: 4px; gap: 4px; }
+.top-controls button { width: 30px; height: 30px; }
+.top-controls button img { width: 16px; height: 16px; }
 }
 @media (max-width: 420px) {
 .sidebar { width: 44px; height: 420px; padding: 8px 0; gap: 3px; left: -44px; }
@@ -1022,13 +982,24 @@ color: #ffffff;
 .floating-toolbar button img { width: 14px; height: 14px; }
 .floating-toolbar .tool-label { font-size: 8px; padding-right: 2px; }
 .floating-toolbar .divider { height: 22px; margin: 0 2px; }
-.editor-container { padding: 12px 14px; }
+.editor-container { padding: 12px 14px; padding-top: 56px; }
 #editor { font-size: 15px; }
+.top-controls { top: 6px; right: 6px; padding: 3px; gap: 3px; border-radius: 10px; }
+.top-controls button { width: 26px; height: 26px; border-radius: 7px; }
+.top-controls button img { width: 14px; height: 14px; }
 }
 </style>
 </head>
 <body>
 <button class="toggle-btn" id="toggleBtn" title="Открыть панель" style="display:none">›</button>
+<div class="top-controls" id="topControls">
+<button id="undoBtn" title="Отменить (Ctrl+Z)" disabled>
+<img src="/data/undo.png" alt="Отменить" />
+</button>
+<button id="redoBtn" title="Повторить (Ctrl+Shift+Z)" disabled>
+<img src="/data/redo.png" alt="Повторить" />
+</button>
+</div>
 <aside class="sidebar" id="sidebar" style="display:none">
 <button class="icon-btn" title="Большая" data-action="larger">
 <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg>
@@ -1188,6 +1159,9 @@ color: #ffffff;
     const linkUrlInput = document.getElementById('linkUrlInput');
     const linkDialogCancel = document.getElementById('linkDialogCancel');
     const linkDialogApply = document.getElementById('linkDialogApply');
+    const topControls = document.getElementById('topControls');
+    const undoBtn = document.getElementById('undoBtn');
+    const redoBtn = document.getElementById('redoBtn');
     const STORAGE_KEY = 'vd5_document';
     const VD5_FORMAT = 'vd5';
     const VD5_VERSION = 1;
@@ -1214,8 +1188,6 @@ color: #ffffff;
     let dragCounter = 0;
     let linkInsertRange = null;
     let linkInsertMode = null;
-    let draggedElement = null;
-    let dragElementGhost = null;
     let dropTargetRange = null;
     let dropPlaceholder = null;
     let previewTooltipTimer = null;
@@ -1232,6 +1204,75 @@ color: #ffffff;
     const SVG_RESIZE = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/><polyline points="21 3 21 9 15 3"/><polyline points="3 21 3 15 9 21"/></svg>';
     const SVG_ALIGN = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></svg>';
     const SVG_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
+
+    let historyStack = [];
+    let historyIndex = -1;
+    let isRestoringHistory = false;
+    let historyDebounceTimer = null;
+
+    function updateHistoryButtons() {
+        if (!undoBtn || !redoBtn) return;
+        undoBtn.disabled = historyIndex <= 0;
+        redoBtn.disabled = historyIndex >= historyStack.length - 1;
+    }
+
+    function pushHistoryState() {
+        if (isRestoringHistory) return;
+        const html = editor.innerHTML;
+        if (historyIndex >= 0 && historyStack[historyIndex] === html) {
+            updateHistoryButtons();
+            return;
+        }
+        historyStack = historyStack.slice(0, historyIndex + 1);
+        historyStack.push(html);
+        if (historyStack.length > 200) {
+            historyStack.shift();
+        }
+        historyIndex = historyStack.length - 1;
+        updateHistoryButtons();
+    }
+
+    function scheduleHistoryPush() {
+        if (isRestoringHistory) return;
+        if (historyDebounceTimer) clearTimeout(historyDebounceTimer);
+        historyDebounceTimer = setTimeout(() => {
+            historyDebounceTimer = null;
+            pushHistoryState();
+        }, 300);
+    }
+
+    function restoreHistoryState(index) {
+        if (index < 0 || index >= historyStack.length) return;
+        isRestoringHistory = true;
+        isInternalChange = true;
+        editor.innerHTML = historyStack[index];
+        isInternalChange = false;
+        isRestoringHistory = false;
+        historyIndex = index;
+        initializeAllVideos();
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
+        updateHistoryButtons();
+        scheduleSave();
+    }
+
+    function undo() {
+        if (historyIndex > 0) {
+            restoreHistoryState(historyIndex - 1);
+        }
+    }
+
+    function redo() {
+        if (historyIndex < historyStack.length - 1) {
+            restoreHistoryState(historyIndex + 1);
+        }
+    }
+
+    if (undoBtn) undoBtn.addEventListener('click', undo);
+    if (redoBtn) redoBtn.addEventListener('click', redo);
 
     function clampX(x, size) {
         return Math.min(Math.max(x, 6), window.innerWidth - size - 6);
@@ -1263,6 +1304,7 @@ color: #ffffff;
             deselectVideo();
             deselectLink();
             deselectTable();
+            scheduleSave();
         });
         document.body.appendChild(handle);
         deleteHandle = handle;
@@ -1452,6 +1494,7 @@ color: #ffffff;
             if (selectedTable) {
                 selectedTable.remove();
                 deselectTable();
+                scheduleSave();
             }
         });
         document.body.appendChild(tableAddColBtn);
@@ -1780,7 +1823,10 @@ color: #ffffff;
         if (selectedFile && !editor.contains(selectedFile)) deselectFile();
         if (selectedTable && !editor.contains(selectedTable)) deselectTable();
         if (selectedLink && !editor.contains(selectedLink)) deselectLink();
-        if (!isInternalChange) scheduleSave();
+        if (!isInternalChange) {
+            scheduleSave();
+            scheduleHistoryPush();
+        }
     });
 
     const observer = new MutationObserver(() => {
@@ -1789,7 +1835,10 @@ color: #ffffff;
         if (selectedFile && !editor.contains(selectedFile)) deselectFile();
         if (selectedTable && !editor.contains(selectedTable)) deselectTable();
         if (selectedLink && !editor.contains(selectedLink)) deselectLink();
-        if (!isInternalChange) scheduleSave();
+        if (!isInternalChange) {
+            scheduleSave();
+            scheduleHistoryPush();
+        }
     });
     observer.observe(editor, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'src', 'data-align', 'data-url', 'data-fileurl', 'data-filename', 'data-filesize', 'data-filetype'] });
 
@@ -2065,12 +2114,13 @@ color: #ffffff;
         const isToggle = toggleBtn.contains(e.target);
         const isCtx = contextMenu.contains(e.target);
         const isLinkDialog = linkDialogOverlay.contains(e.target);
+        const isTopControls = topControls.contains(e.target);
         const isResize = e.target.closest && e.target.closest('.resize-handle');
         const isAlign = e.target.closest && e.target.closest('.align-handle');
         const isDelete = e.target.closest && e.target.closest('.delete-handle');
         const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
         const isVideoControl = e.target.closest && e.target.closest('.video-controls-overlay');
-        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isResize && !isAlign && !isDelete && !isTableBtn && !isVideoControl) {
+        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isTopControls && !isResize && !isAlign && !isDelete && !isTableBtn && !isVideoControl) {
             hideFloatingToolbar();
             hideContextMenu();
             deselectImage();
@@ -2532,9 +2582,6 @@ color: #ffffff;
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
-
-    function getHTML() { return editor.innerHTML; }
-    function getText() { return editor.textContent; }
 
     function getRangeFromPoint(x, y) {
         let range = null;
@@ -3177,6 +3224,7 @@ color: #ffffff;
                 editor.innerHTML = state.content;
                 isInternalChange = false;
                 initializeAllVideos();
+                pushHistoryState();
                 return true;
             }
         } catch (err) {
@@ -3221,6 +3269,7 @@ color: #ffffff;
                 deselectTable();
                 deselectLink();
                 initializeAllVideos();
+                pushHistoryState();
                 scheduleSave();
                 showSaveIndicator('saved', 'Файл .vd5 открыт');
                 hideSaveIndicator(1800);
@@ -3244,7 +3293,19 @@ color: #ffffff;
         if (!isEditingEnabled) return;
         const mod = e.ctrlKey || e.metaKey;
         if (!mod) return;
-        if (e.key === 's' || e.key === 'S') {
+        const key = (e.key || '').toLowerCase();
+        if (key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) redo();
+            else undo();
+            return;
+        }
+        if (key === 'y') {
+            e.preventDefault();
+            redo();
+            return;
+        }
+        if (key === 's') {
             e.preventDefault();
             if (saveTimer) {
                 clearTimeout(saveTimer);
@@ -3253,7 +3314,7 @@ color: #ffffff;
             saveToLocalStorage();
             return;
         }
-        if (e.key === 'o' || e.key === 'O') {
+        if (key === 'o') {
             e.preventDefault();
             vd5Input.value = '';
             vd5Input.click();
@@ -3275,6 +3336,7 @@ color: #ffffff;
         editor.classList.toggle('readonly', !isEditingEnabled);
         toggleBtn.style.display = isEditingEnabled ? 'flex' : 'none';
         sidebar.style.display = isEditingEnabled ? 'flex' : 'none';
+        topControls.style.display = isEditingEnabled ? 'flex' : 'none';
         if (!isEditingEnabled) {
             hideFloatingToolbar();
             hideContextMenu();
@@ -3306,6 +3368,7 @@ color: #ffffff;
             editor.innerHTML = html;
             isInternalChange = false;
             initializeAllVideos();
+            pushHistoryState();
         },
         getText: function() {
             return editor.textContent;
@@ -3314,6 +3377,7 @@ color: #ffffff;
             isInternalChange = true;
             editor.textContent = text;
             isInternalChange = false;
+            pushHistoryState();
         },
         isEditing: function() {
             return isEditingEnabled;
@@ -3330,6 +3394,8 @@ color: #ffffff;
         downloadVd5: function() {
             downloadVd5();
         },
+        undo: undo,
+        redo: redo,
         destroy: function() {
             try {
                 observer.disconnect();
@@ -3354,6 +3420,7 @@ color: #ffffff;
                 if (contextMenu && contextMenu.parentNode) contextMenu.parentNode.removeChild(contextMenu);
                 if (linkDialogOverlay && linkDialogOverlay.parentNode) linkDialogOverlay.parentNode.removeChild(linkDialogOverlay);
                 if (saveIndicator && saveIndicator.parentNode) saveIndicator.parentNode.removeChild(saveIndicator);
+                if (topControls && topControls.parentNode) topControls.parentNode.removeChild(topControls);
                 if (sidebar && sidebar.parentNode) sidebar.parentNode.removeChild(sidebar);
                 if (toggleBtn && toggleBtn.parentNode) toggleBtn.parentNode.removeChild(toggleBtn);
                 if (mainArea && mainArea.parentNode) mainArea.parentNode.removeChild(mainArea);
@@ -3401,9 +3468,14 @@ color: #ffffff;
                 editor.innerHTML = state.content;
                 isInternalChange = false;
                 initializeAllVideos();
+                pushHistoryState();
             }
         })
         .catch(function() {});
+
+    if (historyStack.length === 0) {
+        pushHistoryState();
+    }
 
     setEditingEnabled(isAdmin || apiOptions.editable === true);
 })();
