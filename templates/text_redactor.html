@@ -565,8 +565,7 @@ pointer-events: auto;
 .resize-handle:hover { background: #3b82f6; transform: scale(1.1); }
 .resize-handle:active { background: #2563eb; transform: scale(0.95); }
 .resize-handle svg {
-width: 18px;
-height: 18px;
+width: 18px; height: 18px;
 display: block;
 pointer-events: none;
 stroke: #ffffff;
@@ -591,8 +590,7 @@ pointer-events: auto;
 .align-handle:hover { background: #3b82f6; transform: scale(1.1); }
 .align-handle:active { background: #2563eb; transform: scale(0.95); }
 .align-handle svg {
-width: 18px;
-height: 18px;
+width: 18px; height: 18px;
 display: block;
 pointer-events: none;
 stroke: #ffffff;
@@ -617,8 +615,7 @@ pointer-events: auto;
 .delete-handle:hover { background: #dc2626; transform: scale(1.1); }
 .delete-handle:active { background: #b91c1c; transform: scale(0.95); }
 .delete-handle svg {
-width: 18px;
-height: 18px;
+width: 18px; height: 18px;
 display: block;
 pointer-events: none;
 stroke: #ffffff;
@@ -1047,7 +1044,7 @@ border: none;
 <div id="editor" contenteditable="true"></div>
 </div>
 </div>
-<div class="save-indicator" id="saveIndicator"></div>
+<!-- Индикатор сохранения удалён -->
 <div class="floating-toolbar" id="floatingToolbar">
 <span class="tool-label">Формат</span>
 <button data-action="bold" title="Жирный">
@@ -1197,6 +1194,7 @@ border: none;
     let isInternalChange = false;
     let isEditingEnabled = false;
     let apiOptions = {};
+    let documentId = null;
 
     const ICON_VOLUME = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z';
     const ICON_MUTED = 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z';
@@ -3166,20 +3164,16 @@ border: none;
     });
 
     function showSaveIndicator(state, text) {
-        saveIndicator.classList.remove('saving', 'saved', 'error');
-        if (state) saveIndicator.classList.add(state);
-        saveIndicator.textContent = text || '';
-        saveIndicator.classList.add('show');
+        // Индикатор сохранения отключён
     }
 
     function hideSaveIndicator(delay) {
-        setTimeout(() => {
-            saveIndicator.classList.remove('show');
-        }, delay || 1200);
+        // Индикатор сохранения отключён
     }
 
     function collectDocumentState() {
         return {
+            id: documentId,
             format: VD5_FORMAT,
             version: VD5_VERSION,
             savedAt: new Date().toISOString(),
@@ -3192,21 +3186,17 @@ border: none;
         try {
             const state = collectDocumentState();
             localStorage.setItem(apiOptions.storageKey, JSON.stringify(state));
-            showSaveIndicator('saved', 'Сохранено');
-            hideSaveIndicator(1400);
             if (typeof apiOptions.onSave === 'function') {
                 apiOptions.onSave(state);
             }
         } catch (err) {
-            showSaveIndicator('error', 'Ошибка сохранения');
-            hideSaveIndicator(2000);
+            // Ошибка сохранения
         }
     }
 
     function scheduleSave() {
         if (isInternalChange) return;
         if (saveTimer) clearTimeout(saveTimer);
-        showSaveIndicator('saving', 'Сохранение…');
         saveTimer = setTimeout(() => {
             saveToLocalStorage();
             saveTimer = null;
@@ -3246,8 +3236,6 @@ border: none;
         a.click();
         document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 1000);
-        showSaveIndicator('saved', 'Файл .vd5 скачан');
-        hideSaveIndicator(1800);
     }
 
     function openVd5File(file) {
@@ -3256,8 +3244,6 @@ border: none;
             try {
                 const state = JSON.parse(ev.target.result);
                 if (!state || typeof state.content !== 'string') {
-                    showSaveIndicator('error', 'Неверный формат .vd5');
-                    hideSaveIndicator(2200);
                     return;
                 }
                 isInternalChange = true;
@@ -3271,11 +3257,8 @@ border: none;
                 initializeAllVideos();
                 pushHistoryState();
                 scheduleSave();
-                showSaveIndicator('saved', 'Файл .vd5 открыт');
-                hideSaveIndicator(1800);
             } catch (err) {
-                showSaveIndicator('error', 'Не удалось прочитать .vd5');
-                hideSaveIndicator(2200);
+                // Ошибка открытия
             }
         };
         reader.readAsText(file);
@@ -3394,6 +3377,12 @@ border: none;
         downloadVd5: function() {
             downloadVd5();
         },
+        getId: function() {
+            return documentId;
+        },
+        setId: function(id) {
+            documentId = id;
+        },
         undo: undo,
         redo: redo,
         destroy: function() {
@@ -3429,53 +3418,53 @@ border: none;
         element: editor
     };
 
+    window.addEventListener('message', function(e) {
+        if (!e.data || typeof e.data !== 'object') return;
+        if (e.data.type === 'setContent') {
+            var html = e.data.html || '';
+            isInternalChange = true;
+            editor.innerHTML = html;
+            isInternalChange = false;
+            deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+            initializeAllVideos();
+            historyStack = []; historyIndex = -1;
+            pushHistoryState();
+            try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
+        } else if (e.data.type === 'clearContent') {
+            isInternalChange = true;
+            editor.innerHTML = '';
+            isInternalChange = false;
+            historyStack = []; historyIndex = -1;
+            pushHistoryState();
+            try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
+        }
+    });
+
     window.VD5Editor = EditorAPI;
 
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.has('admin');
+    const requestedId = params.get('id') || params.get('doc_id') || params.get('document_id');
+
+    if (requestedId) {
+        documentId = requestedId;
+    }
 
     if (window.VD5_CONFIG) {
         apiOptions = Object.assign({}, window.VD5_CONFIG);
     }
 
-    apiOptions.storageKey = apiOptions.storageKey || 'vd5_document';
+    apiOptions.storageKey = null;
     apiOptions.uploadUrl = apiOptions.uploadUrl || '/upload';
-    apiOptions.onSave = function(state) {
-        fetch('/api/document', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(state)
-        }).then(function(r) {
-            if (!r.ok) throw new Error('save failed');
-        }).catch(function() {
-            showSaveIndicator('error', 'Не сохранено на сервер');
-            hideSaveIndicator(2000);
-        });
-    };
+    apiOptions.onSave = function(state) {};
 
     if (apiOptions.initialContent) {
         editor.innerHTML = apiOptions.initialContent;
         initializeAllVideos();
     }
 
-    loadFromLocalStorage();
-
-    fetch('/api/document')
-        .then(function(r) { return r.json(); })
-        .then(function(state) {
-            if (state && typeof state.content === 'string' && state.content) {
-                isInternalChange = true;
-                editor.innerHTML = state.content;
-                isInternalChange = false;
-                initializeAllVideos();
-                pushHistoryState();
-            }
-        })
-        .catch(function() {});
-
-    if (historyStack.length === 0) {
-        pushHistoryState();
-    }
+    pushHistoryState();
+    updateHistoryButtons();
 
     setEditingEnabled(isAdmin || apiOptions.editable === true);
 })();
