@@ -3521,17 +3521,39 @@ aria-hidden="true">
         apiOptions = Object.assign({}, window.VD5_CONFIG);
     }
 
+    apiOptions.storageKey = apiOptions.storageKey || 'vd5_document';
+    apiOptions.uploadUrl = apiOptions.uploadUrl || '/upload';
+    apiOptions.onSave = function(state) {
+        fetch('/api/document', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(state)
+        }).then(function(r) {
+            if (!r.ok) throw new Error('save failed');
+        }).catch(function() {
+            showSaveIndicator('error', 'Не сохранено на сервер');
+            hideSaveIndicator(2000);
+        });
+    };
+
     if (apiOptions.initialContent) {
         editor.innerHTML = apiOptions.initialContent;
         initializeAllVideos();
     }
 
-    const hasStoredContent = loadFromLocalStorage();
+    loadFromLocalStorage();
 
-    if (!hasStoredContent && apiOptions.initialContent) {
-        editor.innerHTML = apiOptions.initialContent;
-        initializeAllVideos();
-    }
+    fetch('/api/document')
+        .then(function(r) { return r.json(); })
+        .then(function(state) {
+            if (state && typeof state.content === 'string' && state.content) {
+                isInternalChange = true;
+                editor.innerHTML = state.content;
+                isInternalChange = false;
+                initializeAllVideos();
+            }
+        })
+        .catch(function() {});
 
     setEditingEnabled(isAdmin || apiOptions.editable === true);
 })();
