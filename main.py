@@ -15,7 +15,13 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['DOCS_FOLDER'] = DOCS_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024
 
-DOC_NAME = 'document'
+
+def doc_path(doc_id):
+    return os.path.join(app.config['DOCS_FOLDER'], doc_id + '.vd5')
+
+
+def valid_doc_id(doc_id):
+    return bool(doc_id) and all(c.isalnum() or c in ('-', '_') for c in doc_id)
 
 
 @app.route('/')
@@ -50,13 +56,38 @@ def uploaded_file(filename):
     return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
 
+@app.route('/api/new', methods=['POST'])
+def new_document():
+    doc_id = uuid.uuid4().hex
+    data = {'format': 'vd5', 'version': 1, 'content': ''}
+    path = doc_path(doc_id)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False)
+    return jsonify({'id': doc_id})
+
+
 @app.route('/api/document', methods=['GET'])
 def get_document():
-    path = os.path.join(app.config['DOCS_FOLDER'], DOC_NAME + '.vd5')
+    doc_id = request.args.get('id') or request.args.get('doc_id') or request.args.get('document_id')
+    if doc_id is None:
+        doc_id = uuid.uuid4().hex
+        data = {'format': 'vd5', 'version': 1, 'content': ''}
+        path = doc_path(doc_id)
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        return jsonify({'id': doc_id, 'format': 'vd5', 'version': 1, 'content': ''})
+    if not valid_doc_id(doc_id):
+        return jsonify({'error': 'invalid id'}), 400
+    path = doc_path(doc_id)
     if not os.path.exists(path):
-        return jsonify({'format': 'vd5', 'version': 1, 'content': ''})
+        data = {'format': 'vd5', 'version': 1, 'content': ''}
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False)
+        return jsonify({'id': doc_id, 'format': 'vd5', 'version': 1, 'content': ''})
     with open(path, 'r', encoding='utf-8') as f:
-        return jsonify(json.load(f))
+        data = json.load(f)
+    data['id'] = doc_id
+    return jsonify(data)
 
 
 @app.route('/api/document', methods=['POST'])
@@ -64,12 +95,18 @@ def save_document():
     data = request.get_json(silent=True)
     if not data or not isinstance(data.get('content'), str):
         return jsonify({'error': 'invalid payload'}), 400
-    path = os.path.join(app.config['DOCS_FOLDER'], DOC_NAME + '.vd5')
+    doc_id = data.get('id') or request.args.get('id') or request.args.get('doc_id') or request.args.get('document_id')
+    if not doc_id:
+        doc_id = uuid.uuid4().hex
+        data['id'] = doc_id
+    if not valid_doc_id(doc_id):
+        return jsonify({'error': 'invalid id'}), 400
+    path = doc_path(doc_id)
     tmp = path + '.tmp'
     with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False)
     os.replace(tmp, path)
-    return jsonify({'ok': True})
+    return jsonify({'ok': True, 'id': doc_id})
 
 
 if __name__ == '__main__':
