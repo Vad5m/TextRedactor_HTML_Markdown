@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ title or 'Редактор' }}</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    display: flex; flex-direction: column;
+    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    background: #0f172a;
+    overflow: hidden;
+  }
+  .editor-bar {
+    flex-shrink: 0;
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 16px;
+    background: #1e293b;
+    color: #f1f5f9;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.25);
+    z-index: 1000;
+  }
+  .editor-bar .doc-title {
+    font-size: 14px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    flex: 1; min-width: 0;
+  }
+  .editor-bar .doc-title small {
+    display: block; font-weight: 400; font-size: 11px; color: #94a3b8;
+    margin-top: 2px;
+  }
+  .editor-bar .status {
+    font-size: 12px; color: #94a3b8;
+    padding: 4px 10px; border-radius: 20px;
+    background: #334155;
+    white-space: nowrap;
+    transition: background 0.2s, color 0.2s;
+  }
+  .editor-bar .status.saving { background: #3b82f6; color: #fff; }
+  .editor-bar .status.saved  { background: #16a34a; color: #fff; }
+  .editor-bar .status.error  { background: #ef4444; color: #fff; }
+  .editor-bar button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 14px;
+    border: none; border-radius: 8px;
+    font-size: 13px; font-family: inherit; font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .editor-bar button:active { transform: scale(0.96); }
+  .editor-bar button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .editor-bar button svg { width: 16px; height: 16px; stroke: currentColor; flex-shrink: 0; }
+  .btn-save { background: #3b82f6; color: #fff; }
+  .btn-save:hover:not(:disabled) { background: #2563eb; }
+  .btn-exit { background: #475569; color: #f1f5f9; }
+  .btn-exit:hover:not(:disabled) { background: #64748b; }
+
+  .btn-preview { background: #0ea5e9; color: #fff; }
+  .btn-preview:hover:not(:disabled) { background: #0284c7; }
+  .btn-preview.active { background: #f59e0b; color: #fff; }
+  .btn-preview.active:hover { background: #d97706; }
+
+  .editor-frame-wrap {
+    flex: 1; position: relative; min-height: 0;
+    background: #f8fafc;
+  }
+  #editorFrame { width: 100%; height: 100%; border: none; display: block; }
+
+  .preview-badge {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    background: #f59e0b;
+    color: #0f172a;
+    font-size: 12px; font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.25);
+    z-index: 50;
+    display: none;
+    pointer-events: none;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  .preview-badge.show { display: block; }
+</style>
+</head>
+<body>
+
+<div class="editor-bar">
+  <div class="doc-title">
+    {{ title or 'Документ' }}
+    <small>ID: {{ doc_id }}</small>
+  </div>
+  <span class="status" id="status">Загрузка…</span>
+  <button class="btn-preview" id="previewBtn" title="Предпросмотр как у обычного пользователя">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+    <span id="previewBtnText">Предпросмотр</span>
+  </button>
+  <button class="btn-save" id="saveBtn" title="Сохранить (Ctrl+S)">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Сохранить
+  </button>
+  <button class="btn-exit" id="exitBtn" title="Сохранить и выйти">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+      <polyline points="16 17 21 12 16 7"/>
+      <line x1="21" y1="12" x2="9" y2="12"/>
+    </svg>
+    Сохранить и выйти
+  </button>
+</div>
+
+<div class="editor-frame-wrap">
+  <div class="preview-badge" id="previewBadge">Режим просмотра</div>
+  <iframe id="editorFrame" src="/editor/raw?id={{ doc_id }}&admin=1"></iframe>
+</div>
+
+<script>
+(function() {
+  const DOC_ID = {{ doc_id|tojson }};
+  const frame = document.getElementById('editorFrame');
+  const saveBtn = document.getElementById('saveBtn');
+  const exitBtn = document.getElementById('exitBtn');
+  const previewBtn = document.getElementById('previewBtn');
+  const previewBtnText = document.getElementById('previewBtnText');
+  const previewBadge = document.getElementById('previewBadge');
+  const statusEl = document.getElementById('status');
+
+  let lastSavedHTML = null;
+  let isSaving = false;
+  let hasUnsavedChanges = false;
+  let isPreviewMode = false;
+
+  function setStatus(state, text) {
+    statusEl.className = 'status' + (state ? ' ' + state : '');
+    statusEl.textContent = text;
+  }
+
+  function markDirty() {
+    if (!hasUnsavedChanges) {
+      hasUnsavedChanges = true;
+      setStatus('', 'Не сохранено');
+    }
+  }
+
+  function markSaved() {
+    hasUnsavedChanges = false;
+    setStatus('saved', 'Сохранено');
+    setTimeout(() => {
+      if (!hasUnsavedChanges) setStatus('', 'Готово');
+    }, 2000);
+  }
+
+  function getEditorHTML() {
+    try {
+      const win = frame.contentWindow;
+      if (win && win.VD5Editor && typeof win.VD5Editor.getHTML === 'function') {
+        return win.VD5Editor.getHTML();
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  async function save() {
+    if (isSaving) return false;
+    const html = getEditorHTML();
+    if (html === null) {
+      setStatus('error', 'Редактор не загружен');
+      return false;
+    }
+    if (html === lastSavedHTML) {
+      markSaved();
+      return true;
+    }
+
+    isSaving = true;
+    saveBtn.disabled = true;
+    exitBtn.disabled = true;
+    previewBtn.disabled = true;
+    setStatus('saving', 'Сохранение…');
+
+    try {
+      const res = await fetch('/api/document', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: DOC_ID,
+          format: 'vd5',
+          version: 1,
+          savedAt: new Date().toISOString(),
+          content: html
+        })
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      lastSavedHTML = html;
+      markSaved();
+      return true;
+    } catch (err) {
+      setStatus('error', 'Ошибка: ' + err.message);
+      return false;
+    } finally {
+      isSaving = false;
+      saveBtn.disabled = false;
+      exitBtn.disabled = false;
+      previewBtn.disabled = false;
+    }
+  }
+
+  async function togglePreview() {
+    if (isPreviewMode) {
+      await exitPreview();
+    } else {
+      await enterPreview();
+    }
+  }
+
+  async function enterPreview() {
+    if (isPreviewMode) return;
+
+    if (hasUnsavedChanges) {
+      const ok = await save();
+      if (!ok) {
+        const proceed = confirm('Не удалось сохранить. Войти в предпросмотр без сохранения?');
+        if (!proceed) return;
+      }
+    }
+
+    isPreviewMode = true;
+    previewBtn.classList.add('active');
+    previewBtnText.textContent = 'Выйти из просмотра';
+    previewBadge.classList.add('show');
+    setStatus('', 'Просмотр');
+
+    frame.src = '/editor/raw?id=' + encodeURIComponent(DOC_ID);
+  }
+
+  async function exitPreview() {
+    if (!isPreviewMode) return;
+
+    isPreviewMode = false;
+    previewBtn.classList.remove('active');
+    previewBtnText.textContent = 'Предпросмотр';
+    previewBadge.classList.remove('show');
+    setStatus('', 'Загрузка…');
+
+    frame.src = '/editor/raw?id=' + encodeURIComponent(DOC_ID) + '&admin=1';
+  }
+
+  saveBtn.addEventListener('click', () => save());
+  previewBtn.addEventListener('click', togglePreview);
+
+  exitBtn.addEventListener('click', async () => {
+    const ok = await save();
+    if (ok) {
+      window.location.href = '/';
+    } else {
+      const leave = confirm('Не удалось сохранить документ. Выйти без сохранения?');
+      if (leave) window.location.href = '/';
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    const mod = e.ctrlKey || e.metaKey;
+    if (mod && (e.key || '').toLowerCase() === 's') {
+      e.preventDefault();
+      if (!isPreviewMode) save();
+    }
+  });
+
+  function startDirtyWatcher() {
+    lastSavedHTML = getEditorHTML();
+    setInterval(() => {
+      if (isPreviewMode) return;
+      const html = getEditorHTML();
+      if (html === null) return;
+      if (html !== lastSavedHTML) {
+        markDirty();
+      }
+    }, 800);
+  }
+
+  window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges && !isPreviewMode) {
+      e.preventDefault();
+      e.returnValue = '';
+    }
+  });
+
+  frame.addEventListener('load', () => {
+    let tries = 0;
+    const timer = setInterval(async () => {
+      const win = frame.contentWindow;
+      if (win && win.VD5Editor) {
+        clearInterval(timer);
+
+        try {
+          const res = await fetch('/api/document?id=' + encodeURIComponent(DOC_ID));
+          if (res.ok) {
+            const data = await res.json();
+            if (data && typeof data.content === 'string') {
+              frame.contentWindow.postMessage(
+                { type: 'setContent', html: data.content },
+                '*'
+              );
+              setTimeout(() => {
+                lastSavedHTML = getEditorHTML();
+                setStatus('', isPreviewMode ? 'Просмотр' : 'Готово');
+              }, 150);
+            }
+          } else {
+            setStatus('error', 'Не удалось загрузить документ');
+          }
+        } catch (err) {
+          setStatus('error', 'Ошибка загрузки: ' + err.message);
+        }
+
+        if (!isPreviewMode) {
+          startDirtyWatcher();
+        }
+      } else if (++tries > 40) {
+        clearInterval(timer);
+        setStatus('error', 'Редактор не инициализировался');
+      }
+    }, 200);
+  });
+})();
+</script>
+
+</body>
+</html>
