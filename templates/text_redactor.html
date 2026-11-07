@@ -1044,7 +1044,6 @@ border: none;
 <div id="editor" contenteditable="true"></div>
 </div>
 </div>
-<!-- Индикатор сохранения удалён -->
 <div class="floating-toolbar" id="floatingToolbar">
 <span class="tool-label">Формат</span>
 <button data-action="bold" title="Жирный">
@@ -3164,11 +3163,9 @@ border: none;
     });
 
     function showSaveIndicator(state, text) {
-        // Индикатор сохранения отключён
     }
 
     function hideSaveIndicator(delay) {
-        // Индикатор сохранения отключён
     }
 
     function collectDocumentState() {
@@ -3190,7 +3187,6 @@ border: none;
                 apiOptions.onSave(state);
             }
         } catch (err) {
-            // Ошибка сохранения
         }
     }
 
@@ -3258,7 +3254,6 @@ border: none;
                 pushHistoryState();
                 scheduleSave();
             } catch (err) {
-                // Ошибка открытия
             }
         };
         reader.readAsText(file);
@@ -3342,9 +3337,35 @@ border: none;
         }
     }
 
+    function normalizeHtml(html) {
+        if (!html) return '';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('div').forEach(function (div) {
+            if (div.children.length === 0) {
+                var br = document.createElement('br');
+                div.parentNode.replaceChild(br, div);
+            } else {
+                var br = document.createElement('br');
+                if (div.parentNode) {
+                    div.parentNode.insertBefore(br, div);
+                }
+            }
+        });
+        tmp.querySelectorAll('p').forEach(function (p) {
+            if (p.children.length === 0) {
+                var br = document.createElement('br');
+                p.parentNode.replaceChild(br, p);
+            }
+        });
+        var result = tmp.innerHTML;
+        result = result.replace(/\n/g, '<br>');
+        return result;
+    }
+
     const EditorAPI = {
         getHTML: function() {
-            return editor.innerHTML;
+            return normalizeHtml(editor.innerHTML);
         },
         setHTML: function(html) {
             isInternalChange = true;
