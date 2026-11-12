@@ -157,6 +157,29 @@ color: #94a3b8;
 #editor:focus:empty::before { content: ''; }
 #editor.readonly { cursor: default; }
 #editor.readonly:empty::before { content: ''; }
+.save-indicator {
+position: fixed;
+bottom: 16px;
+right: 20px;
+background: #1e293b;
+color: #f1f5f9;
+font-size: 12px;
+padding: 6px 12px;
+border-radius: 20px;
+box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+opacity: 0;
+transform: translateY(6px);
+transition: opacity 0.25s, transform 0.25s, background 0.25s;
+pointer-events: none;
+z-index: 400;
+display: flex;
+align-items: center;
+gap: 6px;
+}
+.save-indicator.show { opacity: 1; transform: translateY(0); }
+.save-indicator.saving { background: #3b82f6; }
+.save-indicator.saved { background: #16a34a; }
+.save-indicator.error { background: #ef4444; }
 .floating-toolbar {
 position: fixed; background: #1e293b;
 padding: 8px 14px; border-radius: 16px;
@@ -297,50 +320,148 @@ cursor: pointer;
 transition: box-shadow 0.15s;
 overflow: hidden;
 background: #000;
-pointer-events: auto;
 }
 .inserted-video video {
 width: 100%;
 height: 100%;
 object-fit: contain;
 display: block;
-pointer-events: auto;
 }
 .inserted-video.selected {
 box-shadow: 0 0 0 3px #3b82f6, 0 4px 12px rgba(59,130,246,0.3);
 }
-.inserted-video .video-play-hint {
+.video-controls-overlay {
 position: absolute;
-inset: 0;
+left: 0;
+right: 0;
+bottom: 0;
+padding: 8px 12px 12px;
+background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4) 60%, transparent);
 display: flex;
-align-items: center;
-justify-content: center;
-pointer-events: none;
+flex-direction: column;
+gap: 6px;
+z-index: 10;
 opacity: 0;
-transition: opacity 0.2s;
+pointer-events: none;
+transition: opacity 0.25s;
 }
-.inserted-video:hover .video-play-hint {
+.inserted-video:hover .video-controls-overlay,
+.inserted-video.selected .video-controls-overlay {
 opacity: 1;
+pointer-events: auto;
 }
-.video-play-hint .play-circle {
-width: 64px;
-height: 64px;
-border-radius: 50%;
-background: rgba(0,0,0,0.55);
+.video-progress-area {
+display: flex;
+align-items: center;
+gap: 8px;
+}
+.video-time-display {
+color: #f0f0ff;
+font-size: 0.75rem;
+font-variant-numeric: tabular-nums;
+min-width: 40px;
+text-align: center;
+letter-spacing: 0.3px;
+text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+.video-progress-bar {
+flex: 1;
+height: 4px;
+border-radius: 6px;
+background: rgba(255, 255, 255, 0.25);
+cursor: pointer;
+position: relative;
+transition: height 0.15s;
+overflow: hidden;
+}
+.video-progress-bar:hover { height: 6px; }
+.video-progress-fill {
+height: 100%;
+width: 0%;
+background: #ff3b3b;
+border-radius: 6px;
+will-change: width;
+}
+.video-buttons-row {
+display: flex;
+align-items: center;
+gap: 8px;
+color: #fff;
+}
+.video-control-group {
+display: flex;
+align-items: center;
+gap: 6px;
+position: relative;
+}
+.video-icon-btn {
+background: none;
+border: none;
+color: #fff;
+cursor: pointer;
 display: flex;
 align-items: center;
 justify-content: center;
-box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+width: 28px;
+height: 28px;
+border-radius: 50%;
+transition: background 0.15s;
+padding: 0;
 }
-.video-play-hint .play-circle svg {
-width: 30px;
-height: 30px;
-fill: #fff;
-margin-left: 4px;
+.video-icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
+.video-icon-btn svg {
+width: 18px;
+height: 18px;
+fill: currentColor;
+pointer-events: none;
 }
-#editor.readonly .inserted-video .video-play-hint {
-opacity: 0.85;
+.video-volume-wrapper {
+position: relative;
+width: 70px;
+height: 4px;
+border-radius: 6px;
+background: rgba(255, 255, 255, 0.25);
+overflow: hidden;
 }
+.video-volume-fill {
+position: absolute;
+top: 0;
+left: 0;
+height: 100%;
+width: 100%;
+background: #ff3b3b;
+border-radius: 6px;
+pointer-events: none;
+}
+.video-volume-slider {
+position: absolute;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+-webkit-appearance: none;
+appearance: none;
+background: transparent;
+outline: none;
+cursor: pointer;
+margin: 0;
+opacity: 0;
+}
+.video-speed-select {
+background: rgba(0, 0, 0, 0.55);
+color: #fff;
+border: 1px solid rgba(255, 255, 255, 0.3);
+border-radius: 4px;
+padding: 3px 6px;
+font-size: 0.75rem;
+cursor: pointer;
+outline: none;
+font-family: inherit;
+transition: background 0.15s;
+}
+.video-speed-select:hover { background: rgba(0, 0, 0, 0.75); }
+.video-speed-select option { background: #1e1e24; color: #fff; }
+
 .inserted-file {
 display: inline-flex;
 align-items: center;
@@ -376,6 +497,9 @@ width: 20px;
 height: 20px;
 display: block;
 stroke: #0f172a;
+}
+.inserted-file .file-icon img {
+filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-rotate(190deg) brightness(95%) contrast(95%);
 }
 .inserted-file .file-name { font-weight: 600; }
 .inserted-file .file-size { color: #64748b; font-size: 12px; }
@@ -496,6 +620,29 @@ display: block;
 pointer-events: none;
 stroke: #ffffff;
 }
+.drop-indicator {
+position: fixed;
+left: 0;
+right: 0;
+height: 3px;
+background: #3b82f6;
+z-index: 1000;
+pointer-events: none;
+opacity: 0;
+transition: opacity 0.15s;
+box-shadow: 0 0 8px rgba(59,130,246,0.8);
+}
+.drop-indicator.show { opacity: 1; }
+.drop-indicator::before {
+content: '';
+position: absolute;
+left: -4px;
+top: -4px;
+width: 11px;
+height: 11px;
+background: #3b82f6;
+border-radius: 50%;
+}
 .drag-preview {
 position: fixed;
 z-index: 1001;
@@ -572,6 +719,9 @@ height: 20px;
 display: block;
 stroke: #0f172a;
 }
+.file-preview-tooltip .preview-header .preview-icon img {
+filter: brightness(0) saturate(100%) invert(15%) sepia(15%) saturate(1000%) hue-rotate(190deg) brightness(95%) contrast(95%);
+}
 .file-preview-tooltip .preview-header .preview-name {
 font-weight: 600;
 font-size: 13px;
@@ -591,6 +741,18 @@ line-height: 1.5;
 color: #475569;
 white-space: pre-wrap;
 word-break: break-word;
+}
+.file-preview-tooltip .preview-body.text-preview {
+font-family: inherit;
+font-size: 13px;
+}
+.file-preview-tooltip .preview-body img,
+.file-preview-tooltip .preview-body video,
+.file-preview-tooltip .preview-body iframe {
+max-width: 100%;
+max-height: 200px;
+border-radius: 6px;
+display: block;
 }
 .file-preview-tooltip .preview-footer {
 margin-top: 8px;
@@ -784,206 +946,6 @@ border: none;
 .link-dialog .dialog-actions .btn-cancel:hover { background: #e2e8f0; }
 .link-dialog .dialog-actions .btn-apply { background: #3b82f6; color: #ffffff; }
 .link-dialog .dialog-actions .btn-apply:hover { background: #2563eb; }
-
-.video-modal-overlay {
-position: fixed;
-top: 0; left: 0; right: 0; bottom: 0;
-background: rgba(0, 0, 0, 0.92);
-z-index: 3000;
-display: none;
-align-items: center;
-justify-content: center;
-padding: 20px;
-opacity: 0;
-transition: opacity 0.2s;
-}
-.video-modal-overlay.show { display: flex; opacity: 1; }
-.video-modal {
-position: relative;
-width: 100%;
-max-width: 1200px;
-height: 100%;
-max-height: 90vh;
-background: #000;
-border-radius: 12px;
-overflow: hidden;
-box-shadow: 0 20px 80px rgba(0,0,0,0.6);
-display: flex;
-flex-direction: column;
-}
-.video-modal-close {
-position: absolute;
-top: 12px;
-right: 12px;
-z-index: 20;
-width: 40px;
-height: 40px;
-border-radius: 50%;
-background: rgba(0,0,0,0.6);
-border: none;
-color: #fff;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-transition: background 0.15s;
-}
-.video-modal-close:hover { background: rgba(255,255,255,0.2); }
-.video-modal-close svg {
-width: 22px;
-height: 22px;
-stroke: #fff;
-fill: none;
-stroke-width: 2.5;
-stroke-linecap: round;
-}
-.video-modal .video-wrapper {
-position: relative;
-flex: 1;
-width: 100%;
-background: #000;
-overflow: hidden;
-min-height: 0;
-}
-.video-modal video {
-width: 100%;
-height: 100%;
-outline: none;
-display: block;
-object-fit: contain;
-background: #000;
-cursor: pointer;
-}
-.video-modal .bottom-controls {
-position: absolute;
-left: 0;
-right: 0;
-bottom: 0;
-padding: 8px 16px 14px;
-background: linear-gradient(to top, rgba(0, 0, 0, 0.85), rgba(0, 0, 0, 0.4) 60%, transparent);
-display: flex;
-flex-direction: column;
-gap: 8px;
-z-index: 10;
-opacity: 1;
-transition: opacity 0.25s;
-}
-.video-modal .video-wrapper.hide-controls .bottom-controls {
-opacity: 0;
-pointer-events: none;
-}
-.video-modal .progress-area {
-display: flex;
-align-items: center;
-gap: 10px;
-}
-.video-modal .time-display {
-color: #f0f0ff;
-font-size: 0.85rem;
-font-variant-numeric: tabular-nums;
-min-width: 50px;
-text-align: center;
-letter-spacing: 0.3px;
-text-shadow: 0 1px 2px rgba(0,0,0,0.8);
-}
-.video-modal .progress-bar {
-flex: 1;
-height: 5px;
-border-radius: 8px;
-background: rgba(255, 255, 255, 0.25);
-cursor: pointer;
-position: relative;
-transition: height 0.15s;
-overflow: hidden;
-}
-.video-modal .progress-bar:hover { height: 8px; }
-.video-modal .progress-fill {
-height: 100%;
-width: 0%;
-background: #ff3b3b;
-border-radius: 8px;
-will-change: width;
-}
-.video-modal .buttons-row {
-display: flex;
-align-items: center;
-gap: 12px;
-color: #fff;
-}
-.video-modal .control-group {
-display: flex;
-align-items: center;
-gap: 8px;
-position: relative;
-}
-.video-modal .icon-btn {
-background: none;
-border: none;
-color: #fff;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-width: 34px;
-height: 34px;
-border-radius: 50%;
-transition: background 0.15s;
-padding: 0;
-}
-.video-modal .icon-btn:hover { background: rgba(255, 255, 255, 0.15); }
-.video-modal .icon-btn svg {
-width: 22px;
-height: 22px;
-fill: currentColor;
-pointer-events: none;
-}
-.video-modal .volume-wrapper {
-position: relative;
-width: 90px;
-height: 5px;
-border-radius: 8px;
-background: rgba(255, 255, 255, 0.25);
-overflow: hidden;
-}
-.video-modal .volume-fill {
-position: absolute;
-top: 0;
-left: 0;
-height: 100%;
-width: 100%;
-background: #ff3b3b;
-border-radius: 8px;
-pointer-events: none;
-}
-.video-modal .volume-slider {
-position: absolute;
-top: 0;
-left: 0;
-width: 100%;
-height: 100%;
--webkit-appearance: none;
-appearance: none;
-background: transparent;
-outline: none;
-cursor: pointer;
-margin: 0;
-opacity: 0;
-}
-.video-modal .speed-select {
-background: rgba(0, 0, 0, 0.55);
-color: #fff;
-border: 1px solid rgba(255, 255, 255, 0.3);
-border-radius: 6px;
-padding: 5px 8px;
-font-size: 0.85rem;
-cursor: pointer;
-outline: none;
-font-family: inherit;
-transition: background 0.15s;
-}
-.video-modal .speed-select:hover { background: rgba(0, 0, 0, 0.75); }
-.video-modal .speed-select option { background: #1e1e24; color: #fff; }
-
 @media (max-width: 600px) {
 .sidebar { width: 54px; height: 460px; padding: 10px 0; gap: 4px; left: -54px; }
 .sidebar.open { left: 0; }
@@ -1002,8 +964,6 @@ transition: background 0.15s;
 .top-controls { top: 8px; right: 8px; padding: 4px; gap: 4px; }
 .top-controls button { width: 30px; height: 30px; }
 .top-controls button img { width: 16px; height: 16px; }
-.video-modal .volume-wrapper { width: 60px; }
-.video-modal .time-display { font-size: 0.75rem; min-width: 40px; }
 }
 @media (max-width: 420px) {
 .sidebar { width: 44px; height: 420px; padding: 8px 0; gap: 3px; left: -44px; }
@@ -1176,50 +1136,6 @@ transition: background 0.15s;
 <span class="preview-size"></span>
 </div>
 </div>
-<div class="video-modal-overlay" id="videoModalOverlay">
-<div class="video-modal">
-<button class="video-modal-close" id="videoModalClose" title="Закрыть">
-<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-</button>
-<div class="video-wrapper" id="vmWrapper">
-<video id="vmVideo" preload="metadata" playsinline></video>
-<div class="bottom-controls" id="vmControls">
-<div class="progress-area">
-<div class="time-display" id="vmTimeCurrent">0:00</div>
-<div class="progress-bar" id="vmProgressBar">
-<div class="progress-fill" id="vmProgressFill"></div>
-</div>
-<div class="time-display" id="vmTimeDuration">0:00</div>
-</div>
-<div class="buttons-row">
-<div class="control-group">
-<button class="icon-btn" id="vmMuteBtn" title="Вкл/выкл звук">
-<svg id="vmVolumeIcon" viewBox="0 0 24 24">
-<path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/>
-</svg>
-</button>
-<div class="volume-wrapper">
-<div class="volume-fill" id="vmVolumeFill"></div>
-<input type="range" class="volume-slider" id="vmVolumeSlider" min="0" max="1" step="0.01" value="1">
-</div>
-</div>
-<div class="control-group">
-<select class="speed-select" id="vmSpeedSelect">
-<option value="0.25">0.25x</option>
-<option value="0.5">0.5x</option>
-<option value="0.75">0.75x</option>
-<option value="1" selected>1x</option>
-<option value="1.25">1.25x</option>
-<option value="1.5">1.5x</option>
-<option value="2">2x</option>
-<option value="3">3x</option>
-</select>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
 <script>
 (function() {
     const toggleBtn = document.getElementById('toggleBtn');
@@ -1233,6 +1149,7 @@ transition: background 0.15s;
     const contextMenu = document.getElementById('contextMenu');
     const dragPreview = document.getElementById('dragPreview');
     const filePreviewTooltip = document.getElementById('filePreviewTooltip');
+    const saveIndicator = document.getElementById('saveIndicator');
     const linkDialogOverlay = document.getElementById('linkDialogOverlay');
     const linkTitleInput = document.getElementById('linkTitleInput');
     const linkUrlInput = document.getElementById('linkUrlInput');
@@ -1241,24 +1158,11 @@ transition: background 0.15s;
     const topControls = document.getElementById('topControls');
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
-    const videoModalOverlay = document.getElementById('videoModalOverlay');
-    const videoModalClose = document.getElementById('videoModalClose');
-    const vmVideo = document.getElementById('vmVideo');
-    const vmWrapper = document.getElementById('vmWrapper');
-    const vmControls = document.getElementById('vmControls');
-    const vmProgressBar = document.getElementById('vmProgressBar');
-    const vmProgressFill = document.getElementById('vmProgressFill');
-    const vmTimeCurrent = document.getElementById('vmTimeCurrent');
-    const vmTimeDuration = document.getElementById('vmTimeDuration');
-    const vmMuteBtn = document.getElementById('vmMuteBtn');
-    const vmVolumeIcon = document.getElementById('vmVolumeIcon');
-    const vmVolumeSlider = document.getElementById('vmVolumeSlider');
-    const vmVolumeFill = document.getElementById('vmVolumeFill');
-    const vmSpeedSelect = document.getElementById('vmSpeedSelect');
     const STORAGE_KEY = 'vd5_document';
     const VD5_FORMAT = 'vd5';
     const VD5_VERSION = 1;
     let isOpen = false;
+    let savedRange = null;
     let contextMenuRange = null;
     let pendingInsertAction = null;
     let selectedImage = null;
@@ -1276,28 +1180,20 @@ transition: background 0.15s;
     let startX = 0, startY = 0;
     let startWidth = 0, startHeight = 0;
     let startRatio = 1;
+    let isDragOver = false;
+    let dragCounter = 0;
+    let linkInsertRange = null;
+    let linkInsertMode = null;
+    let dropTargetRange = null;
+    let dropPlaceholder = null;
     let previewTooltipTimer = null;
     let previewTooltipTarget = null;
+    let previewTooltipRequestId = 0;
     let saveTimer = null;
     let isInternalChange = false;
     let isEditingEnabled = false;
     let apiOptions = {};
     let documentId = null;
-    let vmHideTimeout = null;
-    let vmRafId = null;
-    let vmInitialized = false;
-    let vmLoadedUrl = null;
-    let linkInsertRange = null;
-    let isDragOver = false;
-    let dragCounter = 0;
-    let dropTargetRange = null;
-    let dropPlaceholder = null;
-    let dragSourceElement = null;
-    let dragSourceType = null;
-    let dragStartX = 0, dragStartY = 0;
-    let dragOffsetX = 0, dragOffsetY = 0;
-    let isDragging = false;
-    let dragGhostElement = null;
 
     const ICON_VOLUME = 'M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z';
     const ICON_MUTED = 'M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z';
@@ -1305,7 +1201,6 @@ transition: background 0.15s;
     const SVG_RESIZE = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/><polyline points="21 3 21 9 15 3"/><polyline points="3 21 3 15 9 21"/></svg>';
     const SVG_ALIGN = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="12" x2="20" y2="12"/><polyline points="8 8 4 12 8 16"/><polyline points="16 8 20 12 16 16"/></svg>';
     const SVG_FILE = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>';
-    const SVG_PLAY = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
 
     let historyStack = [];
     let historyIndex = -1;
@@ -1327,7 +1222,9 @@ transition: background 0.15s;
         }
         historyStack = historyStack.slice(0, historyIndex + 1);
         historyStack.push(html);
-        if (historyStack.length > 200) historyStack.shift();
+        if (historyStack.length > 200) {
+            historyStack.shift();
+        }
         historyIndex = historyStack.length - 1;
         updateHistoryButtons();
     }
@@ -1349,19 +1246,44 @@ transition: background 0.15s;
         isInternalChange = false;
         isRestoringHistory = false;
         historyIndex = index;
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+        initializeAllVideos();
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
         updateHistoryButtons();
         scheduleSave();
     }
 
-    function undo() { if (historyIndex > 0) restoreHistoryState(historyIndex - 1); }
-    function redo() { if (historyIndex < historyStack.length - 1) restoreHistoryState(historyIndex + 1); }
+    function undo() {
+        if (historyIndex > 0) {
+            restoreHistoryState(historyIndex - 1);
+        }
+    }
+
+    function redo() {
+        if (historyIndex < historyStack.length - 1) {
+            restoreHistoryState(historyIndex + 1);
+        }
+    }
 
     if (undoBtn) undoBtn.addEventListener('click', undo);
     if (redoBtn) redoBtn.addEventListener('click', redo);
 
-    function clampX(x, size) { return Math.min(Math.max(x, 6), window.innerWidth - size - 6); }
-    function clampY(y, size) { return Math.min(Math.max(y, 6), window.innerHeight - size - 6); }
+    function clampX(x, size) {
+        return Math.min(Math.max(x, 6), window.innerWidth - size - 6);
+    }
+    function clampY(y, size) {
+        return Math.min(Math.max(y, 6), window.innerHeight - size - 6);
+    }
+
+    function formatTime(seconds) {
+        if (!isFinite(seconds) || seconds < 0) return '0:00';
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+    }
 
     function createDeleteHandle() {
         if (deleteHandle) return deleteHandle;
@@ -1370,11 +1292,15 @@ transition: background 0.15s;
         handle.title = 'Удалить';
         handle.innerHTML = SVG_TRASH;
         handle.addEventListener('mousedown', (e) => {
-            e.preventDefault(); e.stopPropagation();
+            e.preventDefault();
+            e.stopPropagation();
             const target = selectedImage || selectedVideo || selectedLink || selectedTable;
             if (!target) return;
             target.remove();
-            deselectImage(); deselectVideo(); deselectLink(); deselectTable();
+            deselectImage();
+            deselectVideo();
+            deselectLink();
+            deselectTable();
             scheduleSave();
         });
         document.body.appendChild(handle);
@@ -1415,14 +1341,16 @@ transition: background 0.15s;
         const resize = createResizeHandle();
         const align = createAlignHandle();
         const del = createDeleteHandle();
-        align.style.left = clampX(rect.right - handleSize * 3 - 16, handleSize) + 'px';
-        align.style.top = clampY(rect.bottom - handleSize + 6, handleSize) + 'px';
+        const baseRight = rect.right;
+        const baseBottom = rect.bottom;
+        align.style.left = clampX(baseRight - handleSize * 3 - 16, handleSize) + 'px';
+        align.style.top = clampY(baseBottom - handleSize + 6, handleSize) + 'px';
         align.style.display = 'flex';
-        del.style.left = clampX(rect.right - handleSize * 2 - 12, handleSize) + 'px';
-        del.style.top = clampY(rect.bottom - handleSize + 6, handleSize) + 'px';
+        del.style.left = clampX(baseRight - handleSize * 2 - 12, handleSize) + 'px';
+        del.style.top = clampY(baseBottom - handleSize + 6, handleSize) + 'px';
         del.style.display = 'flex';
-        resize.style.left = clampX(rect.right - handleSize + 6, handleSize) + 'px';
-        resize.style.top = clampY(rect.bottom - handleSize + 6, handleSize) + 'px';
+        resize.style.left = clampX(baseRight - handleSize + 6, handleSize) + 'px';
+        resize.style.top = clampY(baseBottom - handleSize + 6, handleSize) + 'px';
         resize.style.display = 'flex';
     }
 
@@ -1431,8 +1359,10 @@ transition: background 0.15s;
         const rect = el.getBoundingClientRect();
         const handleSize = 28;
         const del = createDeleteHandle();
-        del.style.left = clampX(rect.right - handleSize + 6, handleSize) + 'px';
-        del.style.top = clampY(rect.bottom - handleSize + 6, handleSize) + 'px';
+        const baseRight = rect.right;
+        const baseBottom = rect.bottom;
+        del.style.left = clampX(baseRight - handleSize + 6, handleSize) + 'px';
+        del.style.top = clampY(baseBottom - handleSize + 6, handleSize) + 'px';
         del.style.display = 'flex';
     }
 
@@ -1442,22 +1372,66 @@ transition: background 0.15s;
         if (deleteHandle) deleteHandle.style.display = 'none';
     }
 
-    function deselectImage() { if (selectedImage) { selectedImage.classList.remove('selected'); selectedImage = null; } hideHandles(); }
-    function deselectVideo() { if (selectedVideo) { selectedVideo.classList.remove('selected'); selectedVideo = null; } hideHandles(); }
-    function deselectFile() { if (selectedFile) { selectedFile.classList.remove('selected'); selectedFile = null; } }
-    function deselectLink() { if (selectedLink) { selectedLink.classList.remove('selected'); selectedLink = null; } hideHandles(); }
+    function deselectImage() {
+        if (selectedImage) {
+            selectedImage.classList.remove('selected');
+            selectedImage = null;
+        }
+        hideHandles();
+    }
+
+    function deselectVideo() {
+        if (selectedVideo) {
+            selectedVideo.classList.remove('selected');
+            const videoEl = selectedVideo.querySelector('video');
+            if (videoEl && !videoEl.paused) {
+                videoEl.pause();
+            }
+            selectedVideo = null;
+        }
+        hideHandles();
+    }
+
+    function deselectFile() {
+        if (selectedFile) {
+            selectedFile.classList.remove('selected');
+            selectedFile = null;
+        }
+    }
+
+    function deselectLink() {
+        if (selectedLink) {
+            selectedLink.classList.remove('selected');
+            selectedLink = null;
+        }
+        hideHandles();
+    }
 
     function selectImage(img) {
-        if (selectedImage === img) { showHandles(img); return; }
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+        if (selectedImage === img) {
+            showHandles(img);
+            return;
+        }
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
         selectedImage = img;
         img.classList.add('selected');
         showHandles(img);
     }
 
     function selectVideo(videoWrapper) {
-        if (selectedVideo === videoWrapper) { showHandles(videoWrapper); return; }
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+        if (selectedVideo === videoWrapper) {
+            showHandles(videoWrapper);
+            return;
+        }
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
         selectedVideo = videoWrapper;
         videoWrapper.classList.add('selected');
         showHandles(videoWrapper);
@@ -1465,14 +1439,25 @@ transition: background 0.15s;
 
     function selectFile(fileEl) {
         if (selectedFile === fileEl) return;
-        deselectFile(); deselectImage(); deselectVideo(); deselectTable(); deselectLink();
+        deselectFile();
+        deselectImage();
+        deselectVideo();
+        deselectTable();
+        deselectLink();
         selectedFile = fileEl;
         fileEl.classList.add('selected');
     }
 
     function selectLink(linkEl) {
-        if (selectedLink === linkEl) { showDeleteOnly(linkEl); return; }
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+        if (selectedLink === linkEl) {
+            showDeleteOnly(linkEl);
+            return;
+        }
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
         selectedLink = linkEl;
         linkEl.classList.add('selected');
         showDeleteOnly(linkEl);
@@ -1484,21 +1469,30 @@ transition: background 0.15s;
         tableAddColBtn.className = 'table-add-col';
         tableAddColBtn.title = 'Добавить столбец';
         tableAddColBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); e.stopPropagation(); addColumnToTable(selectedTable);
+            e.preventDefault();
+            e.stopPropagation();
+            addColumnToTable(selectedTable);
         });
         tableAddRowBtn = document.createElement('button');
         tableAddRowBtn.className = 'table-add-row';
         tableAddRowBtn.title = 'Добавить строку';
         tableAddRowBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); e.stopPropagation(); addRowToTable(selectedTable);
+            e.preventDefault();
+            e.stopPropagation();
+            addRowToTable(selectedTable);
         });
         tableDeleteBtn = document.createElement('button');
         tableDeleteBtn.className = 'table-delete-handle';
         tableDeleteBtn.title = 'Удалить таблицу';
         tableDeleteBtn.innerHTML = SVG_TRASH;
         tableDeleteBtn.addEventListener('mousedown', (e) => {
-            e.preventDefault(); e.stopPropagation();
-            if (selectedTable) { selectedTable.remove(); deselectTable(); scheduleSave(); }
+            e.preventDefault();
+            e.stopPropagation();
+            if (selectedTable) {
+                selectedTable.remove();
+                deselectTable();
+                scheduleSave();
+            }
         });
         document.body.appendChild(tableAddColBtn);
         document.body.appendChild(tableAddRowBtn);
@@ -1528,19 +1522,32 @@ transition: background 0.15s;
     }
 
     function selectTable(table) {
-        if (selectedTable === table) { showTableAddButtons(table); return; }
-        deselectTable(); deselectImage(); deselectVideo(); deselectFile(); deselectLink();
+        if (selectedTable === table) {
+            showTableAddButtons(table);
+            return;
+        }
+        deselectTable();
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectLink();
         selectedTable = table;
         showTableAddButtons(table);
     }
 
-    function deselectTable() { if (selectedTable) selectedTable = null; hideTableAddButtons(); }
+    function deselectTable() {
+        if (selectedTable) {
+            selectedTable = null;
+        }
+        hideTableAddButtons();
+    }
 
     function addColumnToTable(table) {
         if (!table) return;
         const rows = table.querySelectorAll('tr');
         rows.forEach((row) => {
-            const isHeader = row.parentElement.tagName === 'THEAD' || (row.parentElement.tagName === 'TABLE' && row.rowIndex === 0);
+            const isHeader = row.parentElement.tagName === 'THEAD' ||
+                (row.parentElement.tagName === 'TABLE' && row.rowIndex === 0);
             const cell = document.createElement(isHeader ? 'th' : 'td');
             cell.innerHTML = '<br>';
             row.appendChild(cell);
@@ -1569,7 +1576,8 @@ transition: background 0.15s;
     }
 
     function insertTable(range, rows, cols) {
-        rows = rows || 3; cols = cols || 3;
+        rows = rows || 3;
+        cols = cols || 3;
         const table = document.createElement('table');
         table.className = 'inserted-table';
         table.contentEditable = 'true';
@@ -1603,13 +1611,16 @@ transition: background 0.15s;
     }
 
     function onResizeStart(e) {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         const target = selectedImage || selectedVideo;
         if (!target) return;
         isResizing = true;
-        startX = e.clientX; startY = e.clientY;
+        startX = e.clientX;
+        startY = e.clientY;
         const rect = target.getBoundingClientRect();
-        startWidth = rect.width; startHeight = rect.height;
+        startWidth = rect.width;
+        startHeight = rect.height;
         if (target.style.height && target.style.height !== 'auto') {
             startRatio = parseFloat(target.style.width) / parseFloat(target.style.height);
         } else {
@@ -1625,16 +1636,21 @@ transition: background 0.15s;
         const dx = e.clientX - startX;
         let newWidth = startWidth + dx;
         if (newWidth < 30) newWidth = 30;
-        const newHeight = newWidth / startRatio;
+        let newHeight = newWidth / startRatio;
         target.style.width = newWidth + 'px';
         target.style.height = newHeight + 'px';
         showHandles(target);
     }
 
-    function onResizeEnd() { if (!isResizing) return; isResizing = false; scheduleSave(); }
+    function onResizeEnd() {
+        if (!isResizing) return;
+        isResizing = false;
+        scheduleSave();
+    }
 
     function onAlignClick(e) {
-        e.preventDefault(); e.stopPropagation();
+        e.preventDefault();
+        e.stopPropagation();
         const target = selectedImage || selectedVideo;
         if (!target) return;
         const currentAlign = target.dataset.align || 'left';
@@ -1660,156 +1676,915 @@ transition: background 0.15s;
         scheduleSave();
     }
 
-    function openVideoModal(url) {
-        if (!url) return;
-        vmLoadedUrl = url;
-        if (vmVideo.src !== url) {
-            vmVideo.src = url;
-            vmVideo.load();
-            vmVideo.currentTime = 0;
-        }
-        setVmPlaybackRate(1);
-        vmSpeedSelect.value = '1';
-        updateVmVolumeUI();
-        videoModalOverlay.classList.add('show');
-        vmWrapper.classList.remove('hide-controls');
-        setTimeout(() => {
-            vmVideo.play().catch(() => {});
-            scheduleVmHideControls();
-        }, 50);
-    }
-
-    function closeVideoModal() {
-        videoModalOverlay.classList.remove('show');
-        try { vmVideo.pause(); } catch (err) {}
-        if (vmHideTimeout) { clearTimeout(vmHideTimeout); vmHideTimeout = null; }
-        vmWrapper.classList.remove('hide-controls');
-    }
-
-    function scheduleVmHideControls() {
-        if (vmHideTimeout) clearTimeout(vmHideTimeout);
-        if (!vmVideo.paused && vmLoadedUrl) {
-            vmHideTimeout = setTimeout(() => {
-                vmWrapper.classList.add('hide-controls');
-            }, 2500);
-        }
-    }
-
-    function showVmControls() {
-        vmWrapper.classList.remove('hide-controls');
-        scheduleVmHideControls();
-    }
-
-    function updateVmVolumeUI() {
-        const muted = vmVideo.muted || vmVideo.volume === 0;
-        vmVolumeIcon.querySelector('path').setAttribute('d', muted ? ICON_MUTED : ICON_VOLUME);
-        const val = muted ? 0 : vmVideo.volume;
-        vmVolumeSlider.value = val;
-        vmVolumeFill.style.width = `${val * 100}%`;
-    }
-
-    function setVmPlaybackRate(rate) {
-        vmVideo.playbackRate = rate;
-        for (let i = 0; i < vmSpeedSelect.options.length; i++) {
-            const opt = vmSpeedSelect.options[i];
-            if (parseFloat(opt.value) === rate) { vmSpeedSelect.selectedIndex = i; break; }
-        }
-    }
-
-    function vmFormatTime(seconds) {
-        if (!isFinite(seconds) || seconds < 0) return '0:00';
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-    }
-
-    function vmSmoothProgress() {
-        if (!vmLoadedUrl) { vmRafId = requestAnimationFrame(vmSmoothProgress); return; }
-        const duration = vmVideo.duration;
-        const currentTime = vmVideo.currentTime;
-        if (duration && isFinite(duration)) vmTimeDuration.textContent = vmFormatTime(duration);
-        vmTimeCurrent.textContent = vmFormatTime(currentTime);
-        if (duration && isFinite(duration) && duration > 0) {
-            vmProgressFill.style.width = `${(currentTime / duration) * 100}%`;
-        }
-        vmRafId = requestAnimationFrame(vmSmoothProgress);
-    }
-
-    if (!vmInitialized) {
-        vmInitialized = true;
-        vmRafId = requestAnimationFrame(vmSmoothProgress);
-        vmVideo.addEventListener('loadedmetadata', () => {
-            setVmPlaybackRate(1);
-            vmSpeedSelect.value = '1';
-        });
-        vmVideo.addEventListener('volumechange', updateVmVolumeUI);
-        vmVideo.addEventListener('click', () => {
-            if (vmVideo.paused) vmVideo.play().catch(() => {});
-            else vmVideo.pause();
-            showVmControls();
-        });
-        vmVideo.addEventListener('play', showVmControls);
-        vmVideo.addEventListener('pause', () => {
-            if (vmHideTimeout) { clearTimeout(vmHideTimeout); vmHideTimeout = null; }
-            vmWrapper.classList.remove('hide-controls');
-        });
-        vmMuteBtn.addEventListener('click', (e) => {
+    editor.addEventListener('click', (e) => {
+        if (!isEditingEnabled) return;
+        const target = e.target;
+        if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) {
             e.stopPropagation();
-            vmVideo.muted = !vmVideo.muted;
-            showVmControls();
-        });
-        vmVolumeSlider.addEventListener('input', (e) => {
+            selectImage(target);
+            return;
+        }
+        const videoWrapper = target.closest && target.closest('.inserted-video');
+        if (videoWrapper) {
             e.stopPropagation();
-            const val = parseFloat(e.target.value);
-            vmVideo.volume = val;
-            vmVideo.muted = (val === 0);
-            vmVolumeFill.style.width = `${val * 100}%`;
-            showVmControls();
-        });
-        vmControls.addEventListener('click', (e) => e.stopPropagation());
-        vmSpeedSelect.addEventListener('change', (e) => {
-            setVmPlaybackRate(parseFloat(e.target.value));
-            showVmControls();
-        });
-        vmProgressBar.addEventListener('click', (e) => {
+            if (!target.closest('.video-controls-overlay')) {
+                selectVideo(videoWrapper);
+            }
+            return;
+        }
+        const fileEl = target.closest && target.closest('.inserted-file');
+        if (fileEl) {
             e.stopPropagation();
-            if (!vmVideo.src || !vmVideo.duration || !isFinite(vmVideo.duration)) return;
-            const rect = vmProgressBar.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const percent = Math.min(1, Math.max(0, x / rect.width));
-            vmVideo.currentTime = percent * vmVideo.duration;
-            showVmControls();
+            e.preventDefault();
+            selectFile(fileEl);
+            return;
+        }
+        const linkEl = target.closest && target.closest('.inserted-link');
+        if (linkEl) {
+            e.stopPropagation();
+            e.preventDefault();
+            selectLink(linkEl);
+            return;
+        }
+        const tableEl = target.closest && target.closest('.inserted-table');
+        if (tableEl) {
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectLink();
+            selectTable(tableEl);
+            return;
+        }
+        if (target.closest && target.closest('.resize-handle')) return;
+        if (target.closest && target.closest('.align-handle')) return;
+        if (target.closest && target.closest('.delete-handle')) return;
+        if (target.closest && target.closest('.table-add-col')) return;
+        if (target.closest && target.closest('.table-add-row')) return;
+        if (target.closest && target.closest('.table-delete-handle')) return;
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
+    });
+
+    editor.addEventListener('focusin', (e) => {
+        if (!isEditingEnabled) return;
+        const tableEl = e.target.closest && e.target.closest('.inserted-table');
+        if (tableEl) {
+            selectTable(tableEl);
+        }
+    });
+
+    editor.addEventListener('keyup', () => {
+        if (!isEditingEnabled) return;
+        const sel = window.getSelection();
+        if (!sel || sel.rangeCount === 0) return;
+        const node = sel.anchorNode;
+        if (!node) return;
+        const el = node.nodeType === 1 ? node : node.parentElement;
+        const tableEl = el && el.closest && el.closest('.inserted-table');
+        if (tableEl) {
+            selectTable(tableEl);
+        }
+    });
+
+    editor.addEventListener('dblclick', (e) => {
+        if (!isEditingEnabled) return;
+        const fileEl = e.target.closest && e.target.closest('.inserted-file');
+        if (!fileEl) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const url = fileEl.dataset.fileurl || fileEl.dataset.objectUrl;
+        const name = fileEl.dataset.filename || 'file';
+        if (url) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+    });
+
+    editor.addEventListener('dblclick', (e) => {
+        const linkEl = e.target.closest && e.target.closest('.inserted-link');
+        if (!linkEl) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const url = linkEl.dataset.url;
+        if (url) {
+            window.open(url, '_blank');
+        }
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        if (!isEditingEnabled) return;
+        const target = e.target;
+        if (target.closest && target.closest('.resize-handle')) return;
+        if (target.closest && target.closest('.align-handle')) return;
+        if (target.closest && target.closest('.delete-handle')) return;
+        if (target.closest && target.closest('.table-add-col')) return;
+        if (target.closest && target.closest('.table-add-row')) return;
+        if (target.closest && target.closest('.table-delete-handle')) return;
+        if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) return;
+        if (target.closest && target.closest('.inserted-video')) return;
+        if (target.closest && target.closest('.inserted-file')) return;
+        if (target.closest && target.closest('.inserted-link')) return;
+        if (target.closest && target.closest('.inserted-table')) return;
+        if (editor.contains(target)) return;
+        deselectImage();
+        deselectVideo();
+        deselectFile();
+        deselectTable();
+        deselectLink();
+    });
+
+    function repositionHandles() {
+        if (selectedImage) showHandles(selectedImage);
+        if (selectedVideo) showHandles(selectedVideo);
+        if (selectedLink) showDeleteOnly(selectedLink);
+        if (selectedTable) showTableAddButtons(selectedTable);
+    }
+
+    editor.addEventListener('scroll', repositionHandles);
+    window.addEventListener('scroll', repositionHandles);
+    window.addEventListener('resize', () => {
+        repositionHandles();
+        hideContextMenu();
+    });
+
+    editor.addEventListener('input', () => {
+        if (selectedImage && !editor.contains(selectedImage)) deselectImage();
+        if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
+        if (selectedFile && !editor.contains(selectedFile)) deselectFile();
+        if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+        if (selectedLink && !editor.contains(selectedLink)) deselectLink();
+        if (!isInternalChange) {
+            scheduleSave();
+            scheduleHistoryPush();
+        }
+    });
+
+    const observer = new MutationObserver(() => {
+        if (selectedImage && !editor.contains(selectedImage)) deselectImage();
+        if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
+        if (selectedFile && !editor.contains(selectedFile)) deselectFile();
+        if (selectedTable && !editor.contains(selectedTable)) deselectTable();
+        if (selectedLink && !editor.contains(selectedLink)) deselectLink();
+        if (!isInternalChange) {
+            scheduleSave();
+            scheduleHistoryPush();
+        }
+    });
+    observer.observe(editor, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'src', 'data-align', 'data-url', 'data-fileurl', 'data-filename', 'data-filesize', 'data-filetype'] });
+
+    toggleBtn.addEventListener('click', () => {
+        isOpen = !isOpen;
+        sidebar.classList.toggle('open', isOpen);
+        mainArea.classList.toggle('shifted', isOpen);
+        toggleBtn.classList.toggle('open', isOpen);
+        toggleBtn.textContent = isOpen ? '‹' : '›';
+        toggleBtn.title = isOpen ? 'Скрыть панель' : 'Открыть панель';
+    });
+
+    function saveSelection() {
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0 && !sel.isCollapsed) {
+            savedRange = sel.getRangeAt(0).cloneRange();
+            return true;
+        }
+        return false;
+    }
+
+    function restoreSelection() {
+        if (savedRange) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(savedRange);
+            return true;
+        }
+        return false;
+    }
+
+    function openLinkDialog(mode, range) {
+        linkInsertMode = mode;
+        linkInsertRange = range;
+        linkTitleInput.value = '';
+        linkUrlInput.value = '';
+        linkDialogOverlay.classList.add('show');
+        linkTitleInput.focus();
+    }
+
+    function closeLinkDialog() {
+        linkDialogOverlay.classList.remove('show');
+        linkInsertRange = null;
+        linkInsertMode = null;
+    }
+
+    linkDialogCancel.addEventListener('click', closeLinkDialog);
+    linkDialogOverlay.addEventListener('mousedown', (e) => {
+        if (e.target === linkDialogOverlay) closeLinkDialog();
+    });
+
+    linkDialogApply.addEventListener('click', () => {
+        const title = linkTitleInput.value.trim();
+        let url = linkUrlInput.value.trim();
+        if (!title && !url) {
+            closeLinkDialog();
+            return;
+        }
+        if (!url) url = title;
+        if (!/^https?:\/\//i.test(url)) {
+            url = 'https://' + url;
+        }
+        const linkEl = document.createElement('a');
+        linkEl.className = 'inserted-link';
+        linkEl.href = url;
+        linkEl.target = '_blank';
+        linkEl.rel = 'noopener noreferrer';
+        linkEl.dataset.url = url;
+        linkEl.contentEditable = 'false';
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'link-title';
+        titleSpan.textContent = title || url;
+        const urlSpan = document.createElement('span');
+        urlSpan.className = 'link-url';
+        urlSpan.textContent = url;
+        linkEl.appendChild(titleSpan);
+        linkEl.appendChild(urlSpan);
+        const range = linkInsertRange || (function() {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                return sel.getRangeAt(0);
+            }
+            const r = document.createRange();
+            r.selectNodeContents(editor);
+            r.collapse(false);
+            return r;
+        })();
+        range.deleteContents();
+        range.insertNode(linkEl);
+        placeCaretAfter(linkEl);
+        editor.focus();
+        closeLinkDialog();
+        selectLink(linkEl);
+        scheduleSave();
+    });
+
+    function formatText(action) {
+        if (!isEditingEnabled) return;
+        if (action === 'table') {
+            const sel = window.getSelection();
+            let range;
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                range = sel.getRangeAt(0);
+            } else {
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+            }
+            insertTable(range);
+            return;
+        }
+        if (action === 'link') {
+            const sel = window.getSelection();
+            let range;
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                range = sel.getRangeAt(0);
+            } else {
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+            }
+            openLinkDialog('format', range);
+            return;
+        }
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+            return;
+        }
+        applyFormatting(action);
+    }
+
+    function applyFormatting(action) {
+        if (!isEditingEnabled) return;
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) return;
+        const range = sel.getRangeAt(0);
+        const fragment = range.extractContents();
+        const text = fragment.textContent || '';
+        let wrapper = document.createElement('span');
+        switch (action) {
+            case 'bold': wrapper.style.fontWeight = 'bold'; break;
+            case 'italic': wrapper.style.fontStyle = 'italic'; break;
+            case 'underline': wrapper.style.textDecoration = 'underline'; break;
+            case 'strikethrough': wrapper.style.textDecoration = 'line-through'; break;
+            case 'code':
+                wrapper.style.fontFamily = 'monospace';
+                wrapper.style.background = '#e2e8f0';
+                wrapper.style.padding = '2px 6px';
+                wrapper.style.borderRadius = '4px';
+                break;
+            case 'highlight':
+                wrapper.style.background = '#fef08a';
+                wrapper.style.padding = '2px 4px';
+                break;
+            case 'uppercase': wrapper.style.textTransform = 'uppercase'; break;
+            case 'lowercase': wrapper.style.textTransform = 'lowercase'; break;
+            case 'larger':
+                wrapper.style.fontSize = '24px';
+                wrapper.style.fontWeight = 'bold';
+                break;
+            case 'smaller':
+                wrapper.style.fontSize = '14px';
+                wrapper.style.color = '#64748b';
+                break;
+            default:
+                wrapper.textContent = text;
+        }
+        wrapper.textContent = text;
+        range.insertNode(wrapper);
+        range.setStart(wrapper, 0);
+        range.setEnd(wrapper, wrapper.childNodes.length || 0);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        floatingToolbar.querySelectorAll('button').forEach(btn => {
+            if (btn.dataset.action === action) {
+                btn.classList.add('active');
+                setTimeout(() => btn.classList.remove('active'), 500);
+            }
         });
-        vmProgressBar.addEventListener('contextmenu', (e) => e.preventDefault());
-        vmWrapper.addEventListener('mousemove', showVmControls);
-        vmWrapper.addEventListener('mouseleave', () => {
-            if (!vmVideo.paused && vmLoadedUrl) vmWrapper.classList.add('hide-controls');
-        });
-        videoModalClose.addEventListener('click', closeVideoModal);
-        videoModalOverlay.addEventListener('mousedown', (e) => {
-            if (e.target === videoModalOverlay) closeVideoModal();
-        });
-        document.addEventListener('keydown', (e) => {
-            if (!videoModalOverlay.classList.contains('show')) return;
-            if (e.key === 'Escape') { e.preventDefault(); closeVideoModal(); return; }
-            if (e.code === 'Space') {
-                e.preventDefault();
-                if (vmVideo.paused) vmVideo.play().catch(() => {});
-                else vmVideo.pause();
-                showVmControls();
+        hideFloatingToolbar();
+        editor.focus();
+        scheduleSave();
+    }
+
+    function positionToolbarNearSelection() {
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
+        const range = sel.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return false;
+        const toolbarWidth = floatingToolbar.offsetWidth || 400;
+        const toolbarHeight = floatingToolbar.offsetHeight || 48;
+        let top = rect.top - toolbarHeight - 12;
+        let left = rect.left + rect.width / 2 - toolbarWidth / 2;
+        if (top < 10) top = rect.bottom + 12;
+        if (left < 10) left = 10;
+        if (left + toolbarWidth > window.innerWidth - 10) {
+            left = window.innerWidth - toolbarWidth - 10;
+        }
+        if (top + toolbarHeight > window.innerHeight - 10) {
+            top = window.innerHeight - toolbarHeight - 10;
+        }
+        if (top < 10) top = 10;
+        floatingToolbar.style.top = top + 'px';
+        floatingToolbar.style.left = left + 'px';
+        return true;
+    }
+
+    function showFloatingToolbar() {
+        if (!isEditingEnabled) return;
+        if (positionToolbarNearSelection()) {
+            floatingToolbar.classList.add('show');
+        }
+    }
+
+    function hideFloatingToolbar() {
+        floatingToolbar.classList.remove('show');
+    }
+
+    editor.addEventListener('mouseup', handleSelection);
+    editor.addEventListener('keyup', handleSelection);
+
+    function handleSelection() {
+        if (!isEditingEnabled) return;
+        const sel = window.getSelection();
+        if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
+            const text = sel.toString().trim();
+            if (text.length > 0) {
+                showFloatingToolbar();
                 return;
             }
-            if (e.code === 'KeyM') { e.preventDefault(); vmVideo.muted = !vmVideo.muted; showVmControls(); return; }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); vmVideo.currentTime = Math.max(0, vmVideo.currentTime - 5); showVmControls(); return; }
-            if (e.key === 'ArrowRight') { e.preventDefault(); vmVideo.currentTime = Math.min(vmVideo.duration || 0, vmVideo.currentTime + 5); showVmControls(); return; }
+        }
+        hideFloatingToolbar();
+    }
+
+    document.querySelectorAll('[data-action]').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            if (!isEditingEnabled) return;
+            const action = btn.dataset.action;
+            if (action === 'download-vd5') {
+                downloadVd5();
+                return;
+            }
+            if (action === 'open-vd5') {
+                vd5Input.value = '';
+                vd5Input.click();
+                return;
+            }
+            if (action === 'image') {
+                pendingInsertAction = 'image';
+                fileInput.accept = 'image/*';
+                fileInput.value = '';
+                fileInput.click();
+                return;
+            }
+            if (action === 'file') {
+                pendingInsertAction = 'file';
+                fileInput.accept = '';
+                fileInput.value = '';
+                fileInput.click();
+                return;
+            }
+            formatText(action);
         });
-        updateVmVolumeUI();
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!isEditingEnabled) return;
+        const isToolbar = floatingToolbar.contains(e.target);
+        const isEditor = editor.contains(e.target);
+        const isSidebar = sidebar.contains(e.target);
+        const isToggle = toggleBtn.contains(e.target);
+        const isCtx = contextMenu.contains(e.target);
+        const isLinkDialog = linkDialogOverlay.contains(e.target);
+        const isTopControls = topControls.contains(e.target);
+        const isResize = e.target.closest && e.target.closest('.resize-handle');
+        const isAlign = e.target.closest && e.target.closest('.align-handle');
+        const isDelete = e.target.closest && e.target.closest('.delete-handle');
+        const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
+        const isVideoControl = e.target.closest && e.target.closest('.video-controls-overlay');
+        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isTopControls && !isResize && !isAlign && !isDelete && !isTableBtn && !isVideoControl) {
+            hideFloatingToolbar();
+            hideContextMenu();
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+            deselectLink();
+        }
+    });
+
+    editor.addEventListener('input', () => {
+        if (!isEditingEnabled) return;
+        const sel = window.getSelection();
+        if (!sel || sel.isCollapsed) {
+            hideFloatingToolbar();
+        }
+    });
+
+    sidebar.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    function showContextMenu(x, y) {
+        if (!isEditingEnabled) return;
+        contextMenu.classList.add('show');
+        const menuWidth = contextMenu.offsetWidth || 230;
+        const menuHeight = contextMenu.offsetHeight || 150;
+        let left = x;
+        let top = y;
+        if (left + menuWidth > window.innerWidth - 10) {
+            left = window.innerWidth - menuWidth - 10;
+        }
+        if (top + menuHeight > window.innerHeight - 10) {
+            top = window.innerHeight - menuHeight - 10;
+        }
+        if (left < 10) left = 10;
+        if (top < 10) top = 10;
+        contextMenu.style.left = left + 'px';
+        contextMenu.style.top = top + 'px';
+    }
+
+    function hideContextMenu() {
+        contextMenu.classList.remove('show');
+    }
+
+    editor.addEventListener('contextmenu', (e) => {
+        if (!isEditingEnabled) {
+            e.preventDefault();
+            return;
+        }
+        e.preventDefault();
+        hideFloatingToolbar();
+        const sel = window.getSelection();
+        if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+            contextMenuRange = sel.getRangeAt(0).cloneRange();
+        } else {
+            const range = document.createRange();
+            range.selectNodeContents(editor);
+            range.collapse(false);
+            contextMenuRange = range;
+        }
+        showContextMenu(e.clientX, e.clientY);
+    });
+
+    contextMenu.querySelectorAll('button').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!isEditingEnabled) return;
+            const action = btn.dataset.ctx;
+            hideContextMenu();
+            if (action === 'cancel') {
+                contextMenuRange = null;
+                pendingInsertAction = null;
+                return;
+            }
+            if (action === 'table') {
+                let range = contextMenuRange;
+                if (!range || !editor.contains(range.startContainer)) {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                contextMenuRange = null;
+                pendingInsertAction = null;
+                insertTable(range);
+                return;
+            }
+            if (action === 'link') {
+                let range = contextMenuRange;
+                if (!range || !editor.contains(range.startContainer)) {
+                    range = document.createRange();
+                    range.selectNodeContents(editor);
+                    range.collapse(false);
+                }
+                contextMenuRange = null;
+                pendingInsertAction = null;
+                openLinkDialog('context', range);
+                return;
+            }
+            if (action === 'image') {
+                pendingInsertAction = 'image';
+                fileInput.accept = 'image/*';
+            } else {
+                pendingInsertAction = 'file';
+                fileInput.accept = '';
+            }
+            fileInput.value = '';
+            fileInput.click();
+        });
+    });
+
+    document.addEventListener('mousedown', (e) => {
+        if (!contextMenu.contains(e.target)) {
+            hideContextMenu();
+        }
+    });
+
+    editor.addEventListener('scroll', hideContextMenu);
+
+    function placeCaretAfter(node) {
+        const sel = window.getSelection();
+        if (!sel) return;
+        const br = document.createElement('br');
+        node.parentNode.insertBefore(br, node.nextSibling);
+        const space = document.createTextNode('\u200B');
+        br.parentNode.insertBefore(space, br.nextSibling);
+        const range = document.createRange();
+        range.setStart(space, 1);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function getFileIcon(file) {
+        return SVG_FILE;
+    }
+
+    function uploadFileToServer(file) {
+        return new Promise((resolve, reject) => {
+            const fd = new FormData();
+            fd.append('file', file);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', apiOptions.uploadUrl || '/upload', true);
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const resp = JSON.parse(xhr.responseText);
+                        resolve(resp);
+                    } catch (err) {
+                        reject(err);
+                    }
+                } else {
+                    reject(new Error('HTTP ' + xhr.status));
+                }
+            };
+            xhr.onerror = () => reject(new Error('network error'));
+            xhr.send(fd);
+        });
+    }
+
+    function initVideoPlayerControls(videoWrapper) {
+        const video = videoWrapper.querySelector('video');
+        if (!video) return;
+
+        let controlsOverlay = videoWrapper.querySelector('.video-controls-overlay');
+        if (!controlsOverlay) {
+            controlsOverlay = document.createElement('div');
+            controlsOverlay.className = 'video-controls-overlay';
+            controlsOverlay.innerHTML = `
+            <div class="video-progress-area">
+                <div class="video-time-display video-time-current">0:00</div>
+                <div class="video-progress-bar">
+                    <div class="video-progress-fill"></div>
+                </div>
+                <div class="video-time-display video-time-duration">0:00</div>
+            </div>
+            <div class="video-buttons-row">
+                <div class="video-control-group">
+                    <button class="video-icon-btn video-mute-btn" title="Вкл/выкл звук">
+                        <svg class="video-volume-icon" viewBox="0 0 24 24">
+                            <path d="${ICON_VOLUME}"/>
+                        </svg>
+                    </button>
+                    <div class="video-volume-wrapper">
+                        <div class="video-volume-fill"></div>
+                        <input type="range" class="video-volume-slider" min="0" max="1" step="0.01" value="1">
+                    </div>
+                </div>
+                <div class="video-control-group">
+                    <select class="video-speed-select">
+                        <option value="0.25">0.25x</option>
+                        <option value="0.5">0.5x</option>
+                        <option value="0.75">0.75x</option>
+                        <option value="1" selected>1x</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2">2x</option>
+                        <option value="3">3x</option>
+                    </select>
+                </div>
+            </div>
+            `;
+            videoWrapper.appendChild(controlsOverlay);
+        }
+
+        const timeCurrent = controlsOverlay.querySelector('.video-time-current');
+        const timeDuration = controlsOverlay.querySelector('.video-time-duration');
+        const progressBar = controlsOverlay.querySelector('.video-progress-bar');
+        const progressFill = controlsOverlay.querySelector('.video-progress-fill');
+        const muteBtn = controlsOverlay.querySelector('.video-mute-btn');
+        const volumeIcon = controlsOverlay.querySelector('.video-volume-icon');
+        const volumeSlider = controlsOverlay.querySelector('.video-volume-slider');
+        const volumeFill = controlsOverlay.querySelector('.video-volume-fill');
+        const speedSelect = controlsOverlay.querySelector('.video-speed-select');
+
+        function formatTimeLocal(seconds) {
+            if (!isFinite(seconds) || seconds < 0) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+        }
+
+        let rafId = null;
+        function smoothProgress() {
+            if (!video.src) {
+                rafId = requestAnimationFrame(smoothProgress);
+                return;
+            }
+            const duration = video.duration;
+            const currentTime = video.currentTime;
+            if (duration && isFinite(duration)) {
+                timeDuration.textContent = formatTimeLocal(duration);
+            }
+            timeCurrent.textContent = formatTimeLocal(currentTime);
+            if (duration && isFinite(duration) && duration > 0) {
+                const percent = (currentTime / duration) * 100;
+                progressFill.style.width = `${percent}%`;
+            }
+            rafId = requestAnimationFrame(smoothProgress);
+        }
+        rafId = requestAnimationFrame(smoothProgress);
+
+        function updateVolumeUI() {
+            const muted = video.muted || video.volume === 0;
+            volumeIcon.querySelector('path').setAttribute('d', muted ? ICON_MUTED : ICON_VOLUME);
+            const val = muted ? 0 : video.volume;
+            volumeSlider.value = val;
+            volumeFill.style.width = `${val * 100}%`;
+        }
+
+        function setPlaybackRate(rate) {
+            video.playbackRate = rate;
+            for (let i = 0; i < speedSelect.options.length; i++) {
+                const opt = speedSelect.options[i];
+                if (parseFloat(opt.value) === rate) {
+                    speedSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+        setPlaybackRate(1);
+        updateVolumeUI();
+
+        video.addEventListener('loadedmetadata', () => {
+            setPlaybackRate(1);
+            speedSelect.value = '1';
+        });
+
+        video.addEventListener('volumechange', updateVolumeUI);
+
+        video.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (video.paused) {
+                video.play().catch(e => console.log('Ошибка воспроизведения:', e));
+            } else {
+                video.pause();
+            }
+        });
+
+        muteBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            video.muted = !video.muted;
+        });
+
+        volumeSlider.addEventListener('input', (e) => {
+            e.stopPropagation();
+            const val = parseFloat(e.target.value);
+            video.volume = val;
+            video.muted = (val === 0);
+            volumeFill.style.width = `${val * 100}%`;
+        });
+
+        controlsOverlay.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            setPlaybackRate(parseFloat(e.target.value));
+        });
+
+        progressBar.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (!video.src || !video.duration || !isFinite(video.duration)) return;
+            const rect = progressBar.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const width = rect.width;
+            const percent = Math.min(1, Math.max(0, x / width));
+            video.currentTime = percent * video.duration;
+        });
+
+        progressBar.addEventListener('contextmenu', (e) => e.preventDefault());
+    }
+
+    function initializeAllVideos() {
+        const videos = editor.querySelectorAll('.inserted-video');
+        videos.forEach(vw => {
+            const video = vw.querySelector('video');
+            if (video && !vw.querySelector('.video-controls-overlay')) {
+                initVideoPlayerControls(vw);
+            }
+        });
+    }
+
+    function insertMediaFile(file, range) {
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+        const placeholder = document.createElement('span');
+        placeholder.className = 'inserted-file uploading';
+        placeholder.contentEditable = 'false';
+        const sizeStr = formatFileSize(file.size);
+        placeholder.innerHTML =
+            '<span class="file-icon">' + getFileIcon(file) + '</span>' +
+            '<span class="file-name">' + escapeHtml(file.name) + '</span>' +
+            '<span class="file-size">' + sizeStr + '</span>';
+        range.deleteContents();
+        range.insertNode(placeholder);
+        placeCaretAfter(placeholder);
+        uploadFileToServer(file).then((resp) => {
+            const fileUrl = resp.url;
+            const fileName = resp.name || file.name;
+            const fileSize = resp.size || file.size;
+            const fileType = resp.type || file.type || '';
+            if (isImage) {
+                const img = document.createElement('img');
+                img.src = fileUrl;
+                img.alt = fileName;
+                img.className = 'inserted-image';
+                img.title = fileName;
+                img.style.width = '300px';
+                img.style.height = 'auto';
+                img.style.display = 'block';
+                img.style.marginLeft = '0';
+                img.style.marginRight = 'auto';
+                img.dataset.align = 'left';
+                img.dataset.fileurl = fileUrl;
+                placeholder.parentNode.replaceChild(img, placeholder);
+                placeCaretAfter(img);
+                if (isEditingEnabled) selectImage(img);
+            } else if (isVideo) {
+                const videoWrapper = document.createElement('div');
+                videoWrapper.className = 'inserted-video';
+                videoWrapper.style.width = '400px';
+                videoWrapper.style.height = '250px';
+                videoWrapper.style.display = 'block';
+                videoWrapper.style.marginLeft = '0';
+                videoWrapper.style.marginRight = 'auto';
+                videoWrapper.dataset.align = 'left';
+                videoWrapper.dataset.fileurl = fileUrl;
+
+                const video = document.createElement('video');
+                video.src = fileUrl;
+                video.preload = 'metadata';
+                video.playsinline = true;
+                video.controls = false;
+                videoWrapper.appendChild(video);
+
+                placeholder.parentNode.replaceChild(videoWrapper, placeholder);
+                placeCaretAfter(videoWrapper);
+
+                initVideoPlayerControls(videoWrapper);
+                if (isEditingEnabled) selectVideo(videoWrapper);
+            } else {
+                const fileEl = document.createElement('a');
+                fileEl.className = 'inserted-file';
+                fileEl.href = fileUrl;
+                fileEl.title = fileName + ' (двойной клик — открыть)';
+                fileEl.dataset.filename = fileName;
+                fileEl.dataset.filesize = fileSize;
+                fileEl.dataset.filetype = fileType;
+                fileEl.dataset.fileurl = fileUrl;
+                fileEl.contentEditable = 'false';
+                const iconSrc = getFileIcon({ name: fileName, type: fileType });
+                fileEl.innerHTML =
+                    '<span class="file-icon">' + iconSrc + '</span>' +
+                    '<span class="file-name">' + escapeHtml(fileName) + '</span>' +
+                    '<span class="file-size">' + formatFileSize(fileSize) + '</span>';
+                placeholder.parentNode.replaceChild(fileEl, placeholder);
+                placeCaretAfter(fileEl);
+            }
+            editor.focus();
+            scheduleSave();
+        }).catch(() => {
+            placeholder.classList.remove('uploading');
+            placeholder.classList.add('error');
+            placeholder.querySelector('.file-size').textContent = 'ошибка';
+        });
+    }
+
+    fileInput.addEventListener('change', () => {
+        if (!isEditingEnabled) return;
+        const file = fileInput.files && fileInput.files[0];
+        if (!file) {
+            contextMenuRange = null;
+            pendingInsertAction = null;
+            return;
+        }
+        let range = null;
+        const sel = window.getSelection();
+        if (contextMenuRange) {
+            sel.removeAllRanges();
+            sel.addRange(contextMenuRange);
+            range = contextMenuRange;
+        } else if (pendingInsertAction) {
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                range = sel.getRangeAt(0);
+            } else {
+                range = document.createRange();
+                range.selectNodeContents(editor);
+                range.collapse(false);
+            }
+        } else {
+            contextMenuRange = null;
+            pendingInsertAction = null;
+            return;
+        }
+        if (!range) return;
+        insertMediaFile(file, range);
+        contextMenuRange = null;
+        pendingInsertAction = null;
+        fileInput.value = '';
+        fileInput.accept = '';
+    });
+
+    function formatFileSize(bytes) {
+        bytes = parseInt(bytes, 10) || 0;
+        if (bytes === 0) return '0 Б';
+        const k = 1024;
+        const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
     }
 
     function getRangeFromPoint(x, y) {
         let range = null;
-        if (document.caretRangeFromPoint) range = document.caretRangeFromPoint(x, y);
-        else if (document.caretPositionFromPoint) {
+        if (document.caretRangeFromPoint) {
+            range = document.caretRangeFromPoint(x, y);
+        } else if (document.caretPositionFromPoint) {
             const pos = document.caretPositionFromPoint(x, y);
             if (pos) {
                 range = document.createRange();
@@ -1821,19 +2596,24 @@ transition: background 0.15s;
     }
 
     function updateDropPlaceholder(range) {
-        if (!dragSourceElement) return;
         if (!dropPlaceholder) {
             dropPlaceholder = dragSourceElement.cloneNode(true);
             dropPlaceholder.classList.add('drop-placeholder');
             dropPlaceholder.style.pointerEvents = 'none';
         }
-        if (dropPlaceholder.parentNode) dropPlaceholder.parentNode.removeChild(dropPlaceholder);
-        if (range.startContainer === dropPlaceholder || (range.startContainer.parentNode && range.startContainer.parentNode === dropPlaceholder)) return;
+        if (dropPlaceholder.parentNode) {
+            dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+        }
+        if (range.startContainer === dropPlaceholder || (range.startContainer.parentNode && range.startContainer.parentNode === dropPlaceholder)) {
+            return;
+        }
         range.insertNode(dropPlaceholder);
     }
 
     function removeDropPlaceholder() {
-        if (dropPlaceholder && dropPlaceholder.parentNode) dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+        if (dropPlaceholder && dropPlaceholder.parentNode) {
+            dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+        }
         dropPlaceholder = null;
     }
 
@@ -1841,7 +2621,7 @@ transition: background 0.15s;
         const range = getRangeFromPoint(clientX, clientY);
         if (range && editor.contains(range.startContainer)) {
             dropTargetRange = range;
-            if (dragSourceElement) updateDropPlaceholder(range);
+            updateDropPlaceholder(range);
         } else {
             dropTargetRange = null;
             removeDropPlaceholder();
@@ -1856,16 +2636,18 @@ transition: background 0.15s;
     }
 
     function handleDragEnter(e) {
-        if (!isEditingEnabled) return;
         e.preventDefault();
         dragCounter++;
-        if (!isDragOver) isDragOver = true;
+        if (!isDragOver) {
+            isDragOver = true;
+        }
     }
 
     function handleDragOver(e) {
-        if (!isEditingEnabled) return;
         e.preventDefault();
-        if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+        if (e.dataTransfer) {
+            e.dataTransfer.dropEffect = 'copy';
+        }
         updateDropTarget(e.clientX, e.clientY);
         updateDragPreviewPosition(e.clientX, e.clientY);
         const items = e.dataTransfer && e.dataTransfer.items;
@@ -1910,7 +2692,6 @@ transition: background 0.15s;
     }
 
     function handleDragLeave(e) {
-        if (!isEditingEnabled) return;
         e.preventDefault();
         dragCounter--;
         if (dragCounter <= 0) {
@@ -1924,7 +2705,6 @@ transition: background 0.15s;
     }
 
     function handleDrop(e) {
-        if (!isEditingEnabled) return;
         e.preventDefault();
         dragCounter = 0;
         isDragOver = false;
@@ -1955,8 +2735,9 @@ transition: background 0.15s;
         range.deleteContents();
         const filesArr = Array.from(files);
         filesArr.forEach((file, idx) => {
-            if (idx === 0) insertMediaFile(file, range);
-            else {
+            if (idx === 0) {
+                insertMediaFile(file, range);
+            } else {
                 const newRange = document.createRange();
                 newRange.selectNodeContents(editor);
                 newRange.collapse(false);
@@ -1970,15 +2751,28 @@ transition: background 0.15s;
     editorContainer.addEventListener('dragover', handleDragOver);
     editorContainer.addEventListener('dragleave', handleDragLeave);
     editorContainer.addEventListener('drop', handleDrop);
-    document.addEventListener('dragenter', (e) => { if (isEditingEnabled) e.preventDefault(); });
-    document.addEventListener('dragover', (e) => { if (isEditingEnabled) e.preventDefault(); });
+    document.addEventListener('dragenter', (e) => {
+        e.preventDefault();
+    });
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault();
+    });
     document.addEventListener('drop', (e) => {
-        if (!isEditingEnabled) return;
-        if (!editorContainer.contains(e.target)) e.preventDefault();
+        if (!editorContainer.contains(e.target)) {
+            e.preventDefault();
+        }
     });
 
-    function startInternalDrag(e, element) {
+    let dragSourceElement = null;
+    let dragSourceType = null;
+    let dragStartX = 0, dragStartY = 0;
+    let dragOffsetX = 0, dragOffsetY = 0;
+    let isDragging = false;
+    let dragGhostElement = null;
+
+    function startInternalDrag(e, element, type) {
         dragSourceElement = element;
+        dragSourceType = type;
         dragStartX = e.clientX;
         dragStartY = e.clientY;
         const rect = element.getBoundingClientRect();
@@ -2001,7 +2795,7 @@ transition: background 0.15s;
         }
     }
 
-    function onInternalDragEnd() {
+    function onInternalDragEnd(e) {
         if (!dragSourceElement) return;
         if (isDragging && dropTargetRange && dropPlaceholder) {
             let range = dropTargetRange;
@@ -2010,7 +2804,9 @@ transition: background 0.15s;
                 range.selectNodeContents(editor);
                 range.collapse(false);
             }
-            if (dropPlaceholder.parentNode) dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+            if (dropPlaceholder.parentNode) {
+                dropPlaceholder.parentNode.removeChild(dropPlaceholder);
+            }
             range.insertNode(dragSourceElement);
             placeCaretAfter(dragSourceElement);
             scheduleSave();
@@ -2018,6 +2814,7 @@ transition: background 0.15s;
         destroyDragGhost();
         removeDropPlaceholder();
         dragSourceElement = null;
+        dragSourceType = null;
         isDragging = false;
         dropTargetRange = null;
     }
@@ -2048,7 +2845,9 @@ transition: background 0.15s;
     }
 
     function destroyDragGhost() {
-        if (dragGhostElement && dragGhostElement.parentNode) dragGhostElement.parentNode.removeChild(dragGhostElement);
+        if (dragGhostElement && dragGhostElement.parentNode) {
+            dragGhostElement.parentNode.removeChild(dragGhostElement);
+        }
         dragGhostElement = null;
     }
 
@@ -2063,627 +2862,125 @@ transition: background 0.15s;
         if (target.closest && target.closest('.table-delete-handle')) return;
         if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) {
             selectImage(target);
-            startInternalDrag(e, target);
+            startInternalDrag(e, target, 'image');
             return;
         }
         const videoWrapper = target.closest && target.closest('.inserted-video');
         if (videoWrapper) {
-            selectVideo(videoWrapper);
-            startInternalDrag(e, videoWrapper);
+            if (!target.closest('.video-controls-overlay')) {
+                selectVideo(videoWrapper);
+            }
+            startInternalDrag(e, videoWrapper, 'video');
             return;
         }
         const fileEl = target.closest && target.closest('.inserted-file');
         if (fileEl) {
-            startInternalDrag(e, fileEl);
+            startInternalDrag(e, fileEl, 'file');
             return;
         }
         const linkEl = target.closest && target.closest('.inserted-link');
         if (linkEl) {
-            startInternalDrag(e, linkEl);
+            startInternalDrag(e, linkEl, 'link');
             return;
         }
         const tableEl = target.closest && target.closest('.inserted-table');
         if (tableEl) {
-            startInternalDrag(e, tableEl);
+            startInternalDrag(e, tableEl, 'table');
             return;
         }
     });
 
     document.addEventListener('mousemove', (e) => {
-        if (dragSourceElement) onInternalDragMove(e);
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (dragSourceElement) onInternalDragEnd();
-    });
-
-    editor.addEventListener('dragstart', (e) => e.preventDefault());
-
-    editor.addEventListener('click', (e) => {
-        const target = e.target;
-        const videoWrapper = target.closest && target.closest('.inserted-video');
-
-        if (videoWrapper) {
-            e.stopPropagation();
-            if (isEditingEnabled) { selectVideo(videoWrapper); return; }
-            openVideoModal(videoWrapper.dataset.fileurl);
-            return;
-        }
-
-        if (!isEditingEnabled) return;
-
-        if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) {
-            e.stopPropagation();
-            selectImage(target);
-            return;
-        }
-        const fileEl = target.closest && target.closest('.inserted-file');
-        if (fileEl) {
-            e.stopPropagation(); e.preventDefault();
-            selectFile(fileEl);
-            return;
-        }
-        const linkEl = target.closest && target.closest('.inserted-link');
-        if (linkEl) {
-            e.stopPropagation(); e.preventDefault();
-            selectLink(linkEl);
-            return;
-        }
-        const tableEl = target.closest && target.closest('.inserted-table');
-        if (tableEl) {
-            deselectImage(); deselectVideo(); deselectFile(); deselectLink();
-            selectTable(tableEl);
-            return;
-        }
-        if (target.closest && target.closest('.resize-handle')) return;
-        if (target.closest && target.closest('.align-handle')) return;
-        if (target.closest && target.closest('.delete-handle')) return;
-        if (target.closest && target.closest('.table-add-col')) return;
-        if (target.closest && target.closest('.table-add-row')) return;
-        if (target.closest && target.closest('.table-delete-handle')) return;
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
-    });
-
-    editor.addEventListener('dblclick', (e) => {
-        const videoWrapper = e.target.closest && e.target.closest('.inserted-video');
-        if (videoWrapper) {
-            e.preventDefault(); e.stopPropagation();
-            openVideoModal(videoWrapper.dataset.fileurl);
-            return;
-        }
-        if (!isEditingEnabled) return;
-        const fileEl = e.target.closest && e.target.closest('.inserted-file');
-        if (fileEl) {
-            e.preventDefault(); e.stopPropagation();
-            const url = fileEl.dataset.fileurl;
-            const name = fileEl.dataset.filename || 'file';
-            if (url) {
-                const a = document.createElement('a');
-                a.href = url; a.download = name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            }
-            return;
-        }
-        const linkEl = e.target.closest && e.target.closest('.inserted-link');
-        if (linkEl) {
-            e.preventDefault(); e.stopPropagation();
-            const url = linkEl.dataset.url;
-            if (url) window.open(url, '_blank');
+        if (dragSourceElement) {
+            onInternalDragMove(e);
         }
     });
 
-    editor.addEventListener('focusin', (e) => {
-        if (!isEditingEnabled) return;
-        const tableEl = e.target.closest && e.target.closest('.inserted-table');
-        if (tableEl) selectTable(tableEl);
-    });
-
-    editor.addEventListener('keyup', () => {
-        if (!isEditingEnabled) return;
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0) return;
-        const node = sel.anchorNode;
-        if (!node) return;
-        const el = node.nodeType === 1 ? node : node.parentElement;
-        const tableEl = el && el.closest && el.closest('.inserted-table');
-        if (tableEl) selectTable(tableEl);
-    });
-
-    document.addEventListener('mousedown', (e) => {
-        if (!isEditingEnabled) return;
-        const target = e.target;
-        if (target.closest && target.closest('.resize-handle')) return;
-        if (target.closest && target.closest('.align-handle')) return;
-        if (target.closest && target.closest('.delete-handle')) return;
-        if (target.closest && target.closest('.table-add-col')) return;
-        if (target.closest && target.closest('.table-add-row')) return;
-        if (target.closest && target.closest('.table-delete-handle')) return;
-        if (target.tagName === 'IMG' && target.classList.contains('inserted-image')) return;
-        if (target.closest && target.closest('.inserted-video')) return;
-        if (target.closest && target.closest('.inserted-file')) return;
-        if (target.closest && target.closest('.inserted-link')) return;
-        if (target.closest && target.closest('.inserted-table')) return;
-        if (editor.contains(target)) return;
-        deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
-    });
-
-    function repositionHandles() {
-        if (selectedImage) showHandles(selectedImage);
-        if (selectedVideo) showHandles(selectedVideo);
-        if (selectedLink) showDeleteOnly(selectedLink);
-        if (selectedTable) showTableAddButtons(selectedTable);
-    }
-
-    editor.addEventListener('scroll', repositionHandles);
-    window.addEventListener('scroll', repositionHandles);
-    window.addEventListener('resize', () => { repositionHandles(); hideContextMenu(); });
-
-    editor.addEventListener('input', () => {
-        if (selectedImage && !editor.contains(selectedImage)) deselectImage();
-        if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
-        if (selectedFile && !editor.contains(selectedFile)) deselectFile();
-        if (selectedTable && !editor.contains(selectedTable)) deselectTable();
-        if (selectedLink && !editor.contains(selectedLink)) deselectLink();
-        if (!isInternalChange) { scheduleSave(); scheduleHistoryPush(); }
-    });
-
-    const observer = new MutationObserver(() => {
-        if (selectedImage && !editor.contains(selectedImage)) deselectImage();
-        if (selectedVideo && !editor.contains(selectedVideo)) deselectVideo();
-        if (selectedFile && !editor.contains(selectedFile)) deselectFile();
-        if (selectedTable && !editor.contains(selectedTable)) deselectTable();
-        if (selectedLink && !editor.contains(selectedLink)) deselectLink();
-        if (!isInternalChange) { scheduleSave(); scheduleHistoryPush(); }
-    });
-    observer.observe(editor, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: ['style', 'src', 'data-align', 'data-url', 'data-fileurl', 'data-filename', 'data-filesize', 'data-filetype'] });
-
-    toggleBtn.addEventListener('click', () => {
-        isOpen = !isOpen;
-        sidebar.classList.toggle('open', isOpen);
-        mainArea.classList.toggle('shifted', isOpen);
-        toggleBtn.classList.toggle('open', isOpen);
-        toggleBtn.textContent = isOpen ? '‹' : '›';
-        toggleBtn.title = isOpen ? 'Скрыть панель' : 'Открыть панель';
-    });
-
-    function openLinkDialog(mode, range) {
-        linkInsertRange = range;
-        linkTitleInput.value = '';
-        linkUrlInput.value = '';
-        linkDialogOverlay.classList.add('show');
-        linkTitleInput.focus();
-    }
-
-    function closeLinkDialog() {
-        linkDialogOverlay.classList.remove('show');
-        linkInsertRange = null;
-    }
-
-    linkDialogCancel.addEventListener('click', closeLinkDialog);
-    linkDialogOverlay.addEventListener('mousedown', (e) => { if (e.target === linkDialogOverlay) closeLinkDialog(); });
-
-    linkDialogApply.addEventListener('click', () => {
-        const title = linkTitleInput.value.trim();
-        let url = linkUrlInput.value.trim();
-        if (!title && !url) { closeLinkDialog(); return; }
-        if (!url) url = title;
-        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
-        const linkEl = document.createElement('a');
-        linkEl.className = 'inserted-link';
-        linkEl.href = url;
-        linkEl.target = '_blank';
-        linkEl.rel = 'noopener noreferrer';
-        linkEl.dataset.url = url;
-        linkEl.contentEditable = 'false';
-        const titleSpan = document.createElement('span');
-        titleSpan.className = 'link-title';
-        titleSpan.textContent = title || url;
-        const urlSpan = document.createElement('span');
-        urlSpan.className = 'link-url';
-        urlSpan.textContent = url;
-        linkEl.appendChild(titleSpan);
-        linkEl.appendChild(urlSpan);
-        const range = linkInsertRange || (function() {
-            const sel = window.getSelection();
-            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) return sel.getRangeAt(0);
-            const r = document.createRange();
-            r.selectNodeContents(editor);
-            r.collapse(false);
-            return r;
-        })();
-        range.deleteContents();
-        range.insertNode(linkEl);
-        placeCaretAfter(linkEl);
-        editor.focus();
-        closeLinkDialog();
-        selectLink(linkEl);
-        scheduleSave();
-    });
-
-    function formatText(action) {
-        if (!isEditingEnabled) return;
-        if (action === 'table') {
-            const sel = window.getSelection();
-            let range;
-            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) range = sel.getRangeAt(0);
-            else { range = document.createRange(); range.selectNodeContents(editor); range.collapse(false); }
-            insertTable(range);
-            return;
-        }
-        if (action === 'link') {
-            const sel = window.getSelection();
-            let range;
-            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) range = sel.getRangeAt(0);
-            else { range = document.createRange(); range.selectNodeContents(editor); range.collapse(false); }
-            openLinkDialog('format', range);
-            return;
-        }
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        applyFormatting(action);
-    }
-
-    function applyFormatting(action) {
-        if (!isEditingEnabled) return;
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed) return;
-        const range = sel.getRangeAt(0);
-        const text = range.extractContents().textContent || '';
-        const wrapper = document.createElement('span');
-        switch (action) {
-            case 'bold': wrapper.style.fontWeight = 'bold'; break;
-            case 'italic': wrapper.style.fontStyle = 'italic'; break;
-            case 'underline': wrapper.style.textDecoration = 'underline'; break;
-            case 'strikethrough': wrapper.style.textDecoration = 'line-through'; break;
-            case 'code':
-                wrapper.style.fontFamily = 'monospace';
-                wrapper.style.background = '#e2e8f0';
-                wrapper.style.padding = '2px 6px';
-                wrapper.style.borderRadius = '4px';
-                break;
-            case 'highlight':
-                wrapper.style.background = '#fef08a';
-                wrapper.style.padding = '2px 4px';
-                break;
-            case 'larger':
-                wrapper.style.fontSize = '24px';
-                wrapper.style.fontWeight = 'bold';
-                break;
-            case 'smaller':
-                wrapper.style.fontSize = '14px';
-                wrapper.style.color = '#64748b';
-                break;
-            default: wrapper.textContent = text;
-        }
-        wrapper.textContent = text;
-        range.insertNode(wrapper);
-        range.setStart(wrapper, 0);
-        range.setEnd(wrapper, wrapper.childNodes.length || 0);
-        sel.removeAllRanges();
-        sel.addRange(range);
-        floatingToolbar.querySelectorAll('button').forEach(btn => {
-            if (btn.dataset.action === action) {
-                btn.classList.add('active');
-                setTimeout(() => btn.classList.remove('active'), 500);
-            }
-        });
-        hideFloatingToolbar();
-        editor.focus();
-        scheduleSave();
-    }
-
-    function positionToolbarNearSelection() {
-        const sel = window.getSelection();
-        if (!sel || sel.isCollapsed || sel.rangeCount === 0) return false;
-        const range = sel.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return false;
-        const toolbarWidth = floatingToolbar.offsetWidth || 400;
-        const toolbarHeight = floatingToolbar.offsetHeight || 48;
-        let top = rect.top - toolbarHeight - 12;
-        let left = rect.left + rect.width / 2 - toolbarWidth / 2;
-        if (top < 10) top = rect.bottom + 12;
-        if (left < 10) left = 10;
-        if (left + toolbarWidth > window.innerWidth - 10) left = window.innerWidth - toolbarWidth - 10;
-        if (top + toolbarHeight > window.innerHeight - 10) top = window.innerHeight - toolbarHeight - 10;
-        if (top < 10) top = 10;
-        floatingToolbar.style.top = top + 'px';
-        floatingToolbar.style.left = left + 'px';
-        return true;
-    }
-
-    function showFloatingToolbar() { if (!isEditingEnabled) return; if (positionToolbarNearSelection()) floatingToolbar.classList.add('show'); }
-    function hideFloatingToolbar() { floatingToolbar.classList.remove('show'); }
-
-    editor.addEventListener('mouseup', handleSelection);
-    editor.addEventListener('keyup', handleSelection);
-
-    function handleSelection() {
-        if (!isEditingEnabled) return;
-        const sel = window.getSelection();
-        if (sel && !sel.isCollapsed && sel.rangeCount > 0) {
-            const text = sel.toString().trim();
-            if (text.length > 0) { showFloatingToolbar(); return; }
-        }
-        hideFloatingToolbar();
-    }
-
-    document.querySelectorAll('[data-action]').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.preventDefault();
-            if (!isEditingEnabled) return;
-            const action = btn.dataset.action;
-            if (action === 'download-vd5') { downloadVd5(); return; }
-            if (action === 'open-vd5') { vd5Input.value = ''; vd5Input.click(); return; }
-            if (action === 'image') {
-                pendingInsertAction = 'image';
-                fileInput.accept = 'image/*';
-                fileInput.value = '';
-                fileInput.click();
-                return;
-            }
-            if (action === 'file') {
-                pendingInsertAction = 'file';
-                fileInput.accept = '';
-                fileInput.value = '';
-                fileInput.click();
-                return;
-            }
-            formatText(action);
-        });
-    });
-
-    document.addEventListener('click', (e) => {
-        if (!isEditingEnabled) return;
-        const isToolbar = floatingToolbar.contains(e.target);
-        const isEditor = editor.contains(e.target);
-        const isSidebar = sidebar.contains(e.target);
-        const isToggle = toggleBtn.contains(e.target);
-        const isCtx = contextMenu.contains(e.target);
-        const isLinkDialog = linkDialogOverlay.contains(e.target);
-        const isTopControls = topControls.contains(e.target);
-        const isVideoModal = videoModalOverlay.contains(e.target);
-        const isResize = e.target.closest && e.target.closest('.resize-handle');
-        const isAlign = e.target.closest && e.target.closest('.align-handle');
-        const isDelete = e.target.closest && e.target.closest('.delete-handle');
-        const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
-        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isTopControls && !isVideoModal && !isResize && !isAlign && !isDelete && !isTableBtn) {
-            hideFloatingToolbar();
-            hideContextMenu();
-            deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+    document.addEventListener('mouseup', (e) => {
+        if (dragSourceElement) {
+            onInternalDragEnd(e);
         }
     });
 
-    sidebar.addEventListener('click', (e) => e.stopPropagation());
-
-    function showContextMenu(x, y) {
-        if (!isEditingEnabled) return;
-        contextMenu.classList.add('show');
-        const menuWidth = contextMenu.offsetWidth || 230;
-        const menuHeight = contextMenu.offsetHeight || 150;
-        let left = x, top = y;
-        if (left + menuWidth > window.innerWidth - 10) left = window.innerWidth - menuWidth - 10;
-        if (top + menuHeight > window.innerHeight - 10) top = window.innerHeight - menuHeight - 10;
-        if (left < 10) left = 10;
-        if (top < 10) top = 10;
-        contextMenu.style.left = left + 'px';
-        contextMenu.style.top = top + 'px';
-    }
-
-    function hideContextMenu() { contextMenu.classList.remove('show'); }
-
-    editor.addEventListener('contextmenu', (e) => {
-        if (!isEditingEnabled) { e.preventDefault(); return; }
+    editor.addEventListener('dragstart', (e) => {
         e.preventDefault();
-        hideFloatingToolbar();
-        const sel = window.getSelection();
-        if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
-            contextMenuRange = sel.getRangeAt(0).cloneRange();
-        } else {
-            const range = document.createRange();
-            range.selectNodeContents(editor);
-            range.collapse(false);
-            contextMenuRange = range;
+    });
+
+    function hideFilePreview() {
+        filePreviewTooltip.classList.remove('show');
+        previewTooltipTarget = null;
+        if (previewTooltipTimer) {
+            clearTimeout(previewTooltipTimer);
+            previewTooltipTimer = null;
         }
-        showContextMenu(e.clientX, e.clientY);
-    });
-
-    contextMenu.querySelectorAll('button').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (!isEditingEnabled) return;
-            const action = btn.dataset.ctx;
-            hideContextMenu();
-            if (action === 'cancel') { contextMenuRange = null; pendingInsertAction = null; return; }
-            if (action === 'table') {
-                let range = contextMenuRange;
-                if (!range || !editor.contains(range.startContainer)) {
-                    range = document.createRange();
-                    range.selectNodeContents(editor);
-                    range.collapse(false);
-                }
-                contextMenuRange = null;
-                pendingInsertAction = null;
-                insertTable(range);
-                return;
-            }
-            if (action === 'link') {
-                let range = contextMenuRange;
-                if (!range || !editor.contains(range.startContainer)) {
-                    range = document.createRange();
-                    range.selectNodeContents(editor);
-                    range.collapse(false);
-                }
-                contextMenuRange = null;
-                pendingInsertAction = null;
-                openLinkDialog('context', range);
-                return;
-            }
-            if (action === 'image') { pendingInsertAction = 'image'; fileInput.accept = 'image/*'; }
-            else { pendingInsertAction = 'file'; fileInput.accept = ''; }
-            fileInput.value = '';
-            fileInput.click();
-        });
-    });
-
-    document.addEventListener('mousedown', (e) => { if (!contextMenu.contains(e.target)) hideContextMenu(); });
-    editor.addEventListener('scroll', hideContextMenu);
-
-    function placeCaretAfter(node) {
-        const sel = window.getSelection();
-        if (!sel) return;
-        const br = document.createElement('br');
-        node.parentNode.insertBefore(br, node.nextSibling);
-        const space = document.createTextNode('\u200B');
-        br.parentNode.insertBefore(space, br.nextSibling);
-        const range = document.createRange();
-        range.setStart(space, 1);
-        range.collapse(true);
-        sel.removeAllRanges();
-        sel.addRange(range);
     }
 
-    function uploadFileToServer(file) {
-        return new Promise((resolve, reject) => {
-            const fd = new FormData();
-            fd.append('file', file);
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', apiOptions.uploadUrl || '/upload', true);
-            xhr.onload = () => {
-                if (xhr.status >= 200 && xhr.status < 300) {
-                    try { resolve(JSON.parse(xhr.responseText)); }
-                    catch (err) { reject(err); }
-                } else {
-                    reject(new Error('HTTP ' + xhr.status));
-                }
-            };
-            xhr.onerror = () => reject(new Error('network error'));
-            xhr.send(fd);
-        });
+    function positionFilePreview(rect) {
+        const tooltipRect = filePreviewTooltip.getBoundingClientRect();
+        let left = rect.left;
+        let top = rect.bottom + 10;
+        if (left + tooltipRect.width > window.innerWidth - 10) {
+            left = window.innerWidth - tooltipRect.width - 10;
+        }
+        if (left < 10) left = 10;
+        if (top + tooltipRect.height > window.innerHeight - 10) {
+            top = rect.top - tooltipRect.height - 10;
+        }
+        if (top < 10) top = 10;
+        filePreviewTooltip.style.left = left + 'px';
+        filePreviewTooltip.style.top = top + 'px';
     }
 
-    function insertMediaFile(file, range) {
-        const isImage = file.type.startsWith('image/');
-        const isVideo = file.type.startsWith('video/');
-        const placeholder = document.createElement('span');
-        placeholder.className = 'inserted-file uploading';
-        placeholder.contentEditable = 'false';
-        placeholder.innerHTML =
-            '<span class="file-icon">' + SVG_FILE + '</span>' +
-            '<span class="file-name">' + escapeHtml(file.name) + '</span>' +
-            '<span class="file-size">' + formatFileSize(file.size) + '</span>';
-        range.deleteContents();
-        range.insertNode(placeholder);
-        placeCaretAfter(placeholder);
-        uploadFileToServer(file).then((resp) => {
-            const fileUrl = resp.url;
-            const fileName = resp.name || file.name;
-            const fileSize = resp.size || file.size;
-            const fileType = resp.type || file.type || '';
-            if (isImage) {
-                const img = document.createElement('img');
-                img.src = fileUrl;
-                img.alt = fileName;
-                img.className = 'inserted-image';
-                img.title = fileName;
-                img.style.width = '300px';
-                img.style.height = 'auto';
-                img.style.display = 'block';
-                img.style.marginLeft = '0';
-                img.style.marginRight = 'auto';
-                img.dataset.align = 'left';
-                img.dataset.fileurl = fileUrl;
-                placeholder.parentNode.replaceChild(img, placeholder);
-                placeCaretAfter(img);
-                if (isEditingEnabled) selectImage(img);
-            } else if (isVideo) {
-                const videoWrapper = document.createElement('div');
-                videoWrapper.className = 'inserted-video';
-                videoWrapper.style.width = '400px';
-                videoWrapper.style.height = '225px';
-                videoWrapper.style.display = 'block';
-                videoWrapper.style.marginLeft = '0';
-                videoWrapper.style.marginRight = 'auto';
-                videoWrapper.dataset.align = 'left';
-                videoWrapper.dataset.fileurl = fileUrl;
-                videoWrapper.contentEditable = 'false';
-
-                const video = document.createElement('video');
-                video.src = fileUrl;
-                video.preload = 'metadata';
-                video.playsinline = true;
-                video.controls = false;
-                video.draggable = false;
-                videoWrapper.appendChild(video);
-
-                const hint = document.createElement('div');
-                hint.className = 'video-play-hint';
-                hint.innerHTML = '<div class="play-circle">' + SVG_PLAY + '</div>';
-                videoWrapper.appendChild(hint);
-
-                placeholder.parentNode.replaceChild(videoWrapper, placeholder);
-                placeCaretAfter(videoWrapper);
-                if (isEditingEnabled) selectVideo(videoWrapper);
-            } else {
-                const fileEl = document.createElement('a');
-                fileEl.className = 'inserted-file';
-                fileEl.href = fileUrl;
-                fileEl.title = fileName + ' (двойной клик — открыть)';
-                fileEl.dataset.filename = fileName;
-                fileEl.dataset.filesize = fileSize;
-                fileEl.dataset.filetype = fileType;
-                fileEl.dataset.fileurl = fileUrl;
-                fileEl.contentEditable = 'false';
-                fileEl.innerHTML =
-                    '<span class="file-icon">' + SVG_FILE + '</span>' +
-                    '<span class="file-name">' + escapeHtml(fileName) + '</span>' +
-                    '<span class="file-size">' + formatFileSize(fileSize) + '</span>';
-                placeholder.parentNode.replaceChild(fileEl, placeholder);
-                placeCaretAfter(fileEl);
-            }
-            editor.focus();
-            scheduleSave();
-        }).catch(() => {
-            placeholder.classList.remove('uploading');
-            placeholder.classList.add('error');
-            placeholder.querySelector('.file-size').textContent = 'ошибка';
-        });
+    function isPreviewableFile(fileType, fileName) {
+        const type = (fileType || '').toLowerCase();
+        const name = (fileName || '').toLowerCase();
+        if (type.startsWith('text/')) return true;
+        if (type.startsWith('image/')) return true;
+        if (type.startsWith('video/')) return true;
+        if (type.startsWith('audio/')) return true;
+        if (type.includes('pdf')) return true;
+        if (type.includes('json')) return true;
+        if (type.includes('xml')) return true;
+        if (type.includes('javascript')) return true;
+        if (type.includes('html')) return true;
+        if (type.includes('css')) return true;
+        if (name.endsWith('.txt')) return true;
+        if (name.endsWith('.md')) return true;
+        if (name.endsWith('.log')) return true;
+        if (name.endsWith('.csv')) return true;
+        if (name.endsWith('.json')) return true;
+        if (name.endsWith('.xml')) return true;
+        if (name.endsWith('.js')) return true;
+        if (name.endsWith('.ts')) return true;
+        if (name.endsWith('.html')) return true;
+        if (name.endsWith('.css')) return true;
+        if (name.endsWith('.py')) return true;
+        if (name.endsWith('.java')) return true;
+        if (name.endsWith('.c')) return true;
+        if (name.endsWith('.cpp')) return true;
+        if (name.endsWith('.h')) return true;
+        if (name.endsWith('.pdf')) return true;
+        return false;
     }
 
-    fileInput.addEventListener('change', () => {
-        if (!isEditingEnabled) return;
-        const file = fileInput.files && fileInput.files[0];
-        if (!file) { contextMenuRange = null; pendingInsertAction = null; return; }
-        let range = null;
-        const sel = window.getSelection();
-        if (contextMenuRange) {
-            sel.removeAllRanges();
-            sel.addRange(contextMenuRange);
-            range = contextMenuRange;
-        } else if (pendingInsertAction) {
-            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) range = sel.getRangeAt(0);
-            else { range = document.createRange(); range.selectNodeContents(editor); range.collapse(false); }
-        } else { contextMenuRange = null; pendingInsertAction = null; return; }
-        if (!range) return;
-        insertMediaFile(file, range);
-        contextMenuRange = null;
-        pendingInsertAction = null;
-        fileInput.value = '';
-        fileInput.accept = '';
-    });
-
-    function formatFileSize(bytes) {
-        bytes = parseInt(bytes, 10) || 0;
-        if (bytes === 0) return '0 Б';
-        const k = 1024;
-        const sizes = ['Б', 'КБ', 'МБ', 'ГБ'];
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    function getFileCategory(fileType, fileName) {
+        const type = (fileType || '').toLowerCase();
+        const name = (fileName || '').toLowerCase();
+        if (type.startsWith('image/')) return 'image';
+        if (type.startsWith('video/')) return 'video';
+        if (type.startsWith('audio/')) return 'audio';
+        if (type.includes('pdf') || name.endsWith('.pdf')) return 'pdf';
+        if (type.startsWith('text/') || type.includes('json') || type.includes('xml') ||
+            type.includes('javascript') || type.includes('html') || type.includes('css') ||
+            name.endsWith('.txt') || name.endsWith('.md') || name.endsWith('.log') ||
+            name.endsWith('.csv') || name.endsWith('.json') || name.endsWith('.xml') ||
+            name.endsWith('.js') || name.endsWith('.ts') || name.endsWith('.html') ||
+            name.endsWith('.css') || name.endsWith('.py') || name.endsWith('.java') ||
+            name.endsWith('.c') || name.endsWith('.cpp') || name.endsWith('.h')) return 'text';
+        return 'other';
     }
 
-    function escapeHtml(str) {
+    function escapeHtmlText(str) {
         return String(str)
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
@@ -2692,10 +2989,183 @@ transition: background 0.15s;
             .replace(/'/g, '&#039;');
     }
 
-    function hideFilePreview() {
-        filePreviewTooltip.classList.remove('show');
-        previewTooltipTarget = null;
-        if (previewTooltipTimer) { clearTimeout(previewTooltipTimer); previewTooltipTimer = null; }
+    function showFilePreviewLoading() {
+        filePreviewTooltip.querySelector('.preview-body').innerHTML =
+            '<div class="preview-loading"><span class="spinner"></span><span>Загрузка предпросмотра…</span></div>';
+    }
+
+    function renderTextPreview(text, maxChars) {
+        const limit = maxChars || 1200;
+        let display = text;
+        let truncated = false;
+        if (display.length > limit) {
+            display = display.slice(0, limit);
+            truncated = true;
+        }
+        let html = '<div class="text-preview">' + escapeHtmlText(display) + '</div>';
+        if (truncated) {
+            html += '<div style="margin-top:6px;color:#94a3b8;font-size:11px;">… ещё ' +
+                (text.length - limit) + ' символов</div>';
+        }
+        return html;
+    }
+
+    function loadFilePreviewData(fileEl) {
+        const fileUrl = fileEl.dataset.fileurl || fileEl.dataset.objectUrl;
+        const fileName = fileEl.dataset.filename || 'file';
+        const fileType = fileEl.dataset.filetype || '';
+        const fileSize = parseInt(fileEl.dataset.filesize || '0', 10);
+        const requestId = ++previewTooltipRequestId;
+        filePreviewTooltip.querySelector('.preview-name').textContent = fileName;
+        filePreviewTooltip.querySelector('.preview-type').textContent = fileType || 'неизвестный тип';
+        filePreviewTooltip.querySelector('.preview-size').textContent = formatFileSize(fileSize);
+        if (!fileUrl) {
+            filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                '<div style="color:#94a3b8;font-size:12px;">Предпросмотр недоступен</div>';
+            return;
+        }
+        const category = getFileCategory(fileType, fileName);
+        if (category === 'image') {
+            const img = document.createElement('img');
+            img.onload = () => {
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                filePreviewTooltip.querySelector('.preview-body').appendChild(img);
+                if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+            };
+            img.onerror = () => {
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                    '<div style="color:#94a3b8;font-size:12px;">Не удалось загрузить изображение</div>';
+            };
+            img.src = fileUrl;
+            return;
+        }
+        if (category === 'video') {
+            const video = document.createElement('video');
+            video.src = fileUrl;
+            video.controls = false;
+            video.muted = true;
+            video.preload = 'metadata';
+            video.onloadedmetadata = () => {
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+                filePreviewTooltip.querySelector('.preview-body').appendChild(video);
+                if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+            };
+            video.onerror = () => {
+                if (requestId !== previewTooltipRequestId) return;
+                filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                    '<div style="color:#94a3b8;font-size:12px;">Не удалось загрузить видео</div>';
+            };
+            return;
+        }
+        if (category === 'audio') {
+            const audio = document.createElement('audio');
+            audio.src = fileUrl;
+            audio.controls = true;
+            audio.preload = 'metadata';
+            if (requestId !== previewTooltipRequestId) return;
+            filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+            filePreviewTooltip.querySelector('.preview-body').appendChild(audio);
+            if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+            return;
+        }
+        if (category === 'pdf') {
+            const iframe = document.createElement('iframe');
+            iframe.src = fileUrl + '#toolbar=0&navpanes=0&scrollbar=0&view=FitH';
+            iframe.style.width = '340px';
+            iframe.style.height = '200px';
+            iframe.style.border = 'none';
+            if (requestId !== previewTooltipRequestId) return;
+            filePreviewTooltip.querySelector('.preview-body').innerHTML = '';
+            filePreviewTooltip.querySelector('.preview-body').appendChild(iframe);
+            if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+            return;
+        }
+        if (category === 'text') {
+            showFilePreviewLoading();
+            fetch(fileUrl)
+                .then((res) => res.text())
+                .then((text) => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML = renderTextPreview(text, 1200);
+                    if (previewTooltipTarget) positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+                })
+                .catch(() => {
+                    if (requestId !== previewTooltipRequestId) return;
+                    filePreviewTooltip.querySelector('.preview-body').innerHTML =
+                        '<div style="color:#94a3b8;font-size:12px;">Не удалось прочитать файл</div>';
+                });
+            return;
+        }
+        filePreviewTooltip.querySelector('.preview-body').innerHTML =
+            '<div style="color:#94a3b8;font-size:12px;">Предпросмотр для этого типа файла недоступен</div>';
+    }
+
+    function showFilePreview(fileEl) {
+        if (!fileEl) return;
+        previewTooltipTarget = fileEl;
+        loadFilePreviewData(fileEl);
+        filePreviewTooltip.classList.add('show');
+        requestAnimationFrame(() => {
+            if (previewTooltipTarget) {
+                positionFilePreview(previewTooltipTarget.getBoundingClientRect());
+            }
+        });
+    }
+
+    editor.addEventListener('mouseover', (e) => {
+        const fileEl = e.target.closest && e.target.closest('.inserted-file');
+        if (!fileEl) return;
+        if (!isPreviewableFile(fileEl.dataset.filetype, fileEl.dataset.filename)) return;
+        if (previewTooltipTarget === fileEl) return;
+        if (previewTooltipTimer) {
+            clearTimeout(previewTooltipTimer);
+        }
+        previewTooltipTimer = setTimeout(() => {
+            showFilePreview(fileEl);
+        }, 350);
+    });
+
+    editor.addEventListener('mouseout', (e) => {
+        const fileEl = e.target.closest && e.target.closest('.inserted-file');
+        if (!fileEl) return;
+        const related = e.relatedTarget;
+        if (related && fileEl.contains(related)) return;
+        if (related && related.closest && related.closest('.inserted-file') === fileEl) return;
+        if (previewTooltipTimer) {
+            clearTimeout(previewTooltipTimer);
+            previewTooltipTimer = null;
+        }
+        hideFilePreview();
+    });
+
+    filePreviewTooltip.addEventListener('mouseenter', () => {
+        if (previewTooltipTimer) {
+            clearTimeout(previewTooltipTimer);
+            previewTooltipTimer = null;
+        }
+    });
+
+    filePreviewTooltip.addEventListener('mouseleave', () => {
+        hideFilePreview();
+    });
+
+    editor.addEventListener('scroll', hideFilePreview);
+    window.addEventListener('scroll', hideFilePreview);
+    window.addEventListener('resize', hideFilePreview);
+
+    document.addEventListener('mousedown', (e) => {
+        if (!e.target.closest || !e.target.closest('.inserted-file')) {
+            hideFilePreview();
+        }
+    });
+
+    function showSaveIndicator(state, text) {
+    }
+
+    function hideSaveIndicator(delay) {
     }
 
     function collectDocumentState() {
@@ -2713,14 +3183,20 @@ transition: background 0.15s;
         try {
             const state = collectDocumentState();
             localStorage.setItem(apiOptions.storageKey, JSON.stringify(state));
-            if (typeof apiOptions.onSave === 'function') apiOptions.onSave(state);
-        } catch (err) {}
+            if (typeof apiOptions.onSave === 'function') {
+                apiOptions.onSave(state);
+            }
+        } catch (err) {
+        }
     }
 
     function scheduleSave() {
         if (isInternalChange) return;
         if (saveTimer) clearTimeout(saveTimer);
-        saveTimer = setTimeout(() => { saveToLocalStorage(); saveTimer = null; }, 500);
+        saveTimer = setTimeout(() => {
+            saveToLocalStorage();
+            saveTimer = null;
+        }, 500);
     }
 
     function loadFromLocalStorage() {
@@ -2733,10 +3209,13 @@ transition: background 0.15s;
                 isInternalChange = true;
                 editor.innerHTML = state.content;
                 isInternalChange = false;
+                initializeAllVideos();
                 pushHistoryState();
                 return true;
             }
-        } catch (err) { return false; }
+        } catch (err) {
+            return false;
+        }
         return false;
     }
 
@@ -2760,14 +3239,22 @@ transition: background 0.15s;
         reader.onload = (ev) => {
             try {
                 const state = JSON.parse(ev.target.result);
-                if (!state || typeof state.content !== 'string') return;
+                if (!state || typeof state.content !== 'string') {
+                    return;
+                }
                 isInternalChange = true;
                 editor.innerHTML = state.content;
                 isInternalChange = false;
-                deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+                deselectImage();
+                deselectVideo();
+                deselectFile();
+                deselectTable();
+                deselectLink();
+                initializeAllVideos();
                 pushHistoryState();
                 scheduleSave();
-            } catch (err) {}
+            } catch (err) {
+            }
         };
         reader.readAsText(file);
     }
@@ -2785,15 +3272,32 @@ transition: background 0.15s;
         const mod = e.ctrlKey || e.metaKey;
         if (!mod) return;
         const key = (e.key || '').toLowerCase();
-        if (key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return; }
-        if (key === 'y') { e.preventDefault(); redo(); return; }
+        if (key === 'z') {
+            e.preventDefault();
+            if (e.shiftKey) redo();
+            else undo();
+            return;
+        }
+        if (key === 'y') {
+            e.preventDefault();
+            redo();
+            return;
+        }
         if (key === 's') {
             e.preventDefault();
-            if (saveTimer) { clearTimeout(saveTimer); saveTimer = null; }
+            if (saveTimer) {
+                clearTimeout(saveTimer);
+                saveTimer = null;
+            }
             saveToLocalStorage();
             return;
         }
-        if (key === 'o') { e.preventDefault(); vd5Input.value = ''; vd5Input.click(); return; }
+        if (key === 'o') {
+            e.preventDefault();
+            vd5Input.value = '';
+            vd5Input.click();
+            return;
+        }
     });
 
     window.addEventListener('beforeunload', () => {
@@ -2815,7 +3319,11 @@ transition: background 0.15s;
             hideFloatingToolbar();
             hideContextMenu();
             hideFilePreview();
-            deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+            deselectImage();
+            deselectVideo();
+            deselectFile();
+            deselectTable();
+            deselectLink();
             hideTableAddButtons();
             hideHandles();
             if (isOpen) {
@@ -2829,30 +3337,105 @@ transition: background 0.15s;
         }
     }
 
+    function normalizeHtml(html) {
+        if (!html) return '';
+        var tmp = document.createElement('div');
+        tmp.innerHTML = html;
+        tmp.querySelectorAll('div').forEach(function (div) {
+            if (div.children.length === 0) {
+                var br = document.createElement('br');
+                div.parentNode.replaceChild(br, div);
+            } else {
+                var br = document.createElement('br');
+                if (div.parentNode) {
+                    div.parentNode.insertBefore(br, div);
+                }
+            }
+        });
+        tmp.querySelectorAll('p').forEach(function (p) {
+            if (p.children.length === 0) {
+                var br = document.createElement('br');
+                p.parentNode.replaceChild(br, p);
+            }
+        });
+        var result = tmp.innerHTML;
+        result = result.replace(/\n/g, '<br>');
+        return result;
+    }
+
     const EditorAPI = {
-        getHTML: function() { return editor.innerHTML; },
+        getHTML: function() {
+            return normalizeHtml(editor.innerHTML);
+        },
         setHTML: function(html) {
             isInternalChange = true;
             editor.innerHTML = html;
             isInternalChange = false;
+            initializeAllVideos();
             pushHistoryState();
         },
-        getText: function() { return editor.textContent; },
+        getText: function() {
+            return editor.textContent;
+        },
         setText: function(text) {
             isInternalChange = true;
             editor.textContent = text;
             isInternalChange = false;
             pushHistoryState();
         },
-        isEditing: function() { return isEditingEnabled; },
-        setEditing: function(enabled) { setEditingEnabled(enabled); },
-        save: function() { saveToLocalStorage(); },
-        load: function() { return loadFromLocalStorage(); },
-        downloadVd5: function() { downloadVd5(); },
-        getId: function() { return documentId; },
-        setId: function(id) { documentId = id; },
+        isEditing: function() {
+            return isEditingEnabled;
+        },
+        setEditing: function(enabled) {
+            setEditingEnabled(enabled);
+        },
+        save: function() {
+            saveToLocalStorage();
+        },
+        load: function() {
+            return loadFromLocalStorage();
+        },
+        downloadVd5: function() {
+            downloadVd5();
+        },
+        getId: function() {
+            return documentId;
+        },
+        setId: function(id) {
+            documentId = id;
+        },
         undo: undo,
         redo: redo,
+        destroy: function() {
+            try {
+                observer.disconnect();
+                if (editorContainer) {
+                    editorContainer.removeEventListener('dragenter', handleDragEnter);
+                    editorContainer.removeEventListener('dragover', handleDragOver);
+                    editorContainer.removeEventListener('dragleave', handleDragLeave);
+                    editorContainer.removeEventListener('drop', handleDrop);
+                }
+                if (dragGhostElement && dragGhostElement.parentNode) {
+                    dragGhostElement.parentNode.removeChild(dragGhostElement);
+                }
+                if (resizeHandle && resizeHandle.parentNode) resizeHandle.parentNode.removeChild(resizeHandle);
+                if (alignHandle && alignHandle.parentNode) alignHandle.parentNode.removeChild(alignHandle);
+                if (deleteHandle && deleteHandle.parentNode) deleteHandle.parentNode.removeChild(deleteHandle);
+                if (tableAddColBtn && tableAddColBtn.parentNode) tableAddColBtn.parentNode.removeChild(tableAddColBtn);
+                if (tableAddRowBtn && tableAddRowBtn.parentNode) tableAddRowBtn.parentNode.removeChild(tableAddRowBtn);
+                if (tableDeleteBtn && tableDeleteBtn.parentNode) tableDeleteBtn.parentNode.removeChild(tableDeleteBtn);
+                if (filePreviewTooltip && filePreviewTooltip.parentNode) filePreviewTooltip.parentNode.removeChild(filePreviewTooltip);
+                if (dragPreview && dragPreview.parentNode) dragPreview.parentNode.removeChild(dragPreview);
+                if (floatingToolbar && floatingToolbar.parentNode) floatingToolbar.parentNode.removeChild(floatingToolbar);
+                if (contextMenu && contextMenu.parentNode) contextMenu.parentNode.removeChild(contextMenu);
+                if (linkDialogOverlay && linkDialogOverlay.parentNode) linkDialogOverlay.parentNode.removeChild(linkDialogOverlay);
+                if (saveIndicator && saveIndicator.parentNode) saveIndicator.parentNode.removeChild(saveIndicator);
+                if (topControls && topControls.parentNode) topControls.parentNode.removeChild(topControls);
+                if (sidebar && sidebar.parentNode) sidebar.parentNode.removeChild(sidebar);
+                if (toggleBtn && toggleBtn.parentNode) toggleBtn.parentNode.removeChild(toggleBtn);
+                if (mainArea && mainArea.parentNode) mainArea.parentNode.removeChild(mainArea);
+            } catch (e) {}
+        },
         element: editor
     };
 
@@ -2864,6 +3447,7 @@ transition: background 0.15s;
             editor.innerHTML = html;
             isInternalChange = false;
             deselectImage(); deselectVideo(); deselectFile(); deselectTable(); deselectLink();
+            initializeAllVideos();
             historyStack = []; historyIndex = -1;
             pushHistoryState();
             try { localStorage.removeItem(STORAGE_KEY); } catch (err) {}
@@ -2882,19 +3466,49 @@ transition: background 0.15s;
     const params = new URLSearchParams(window.location.search);
     const isAdmin = params.has('admin');
     const requestedId = params.get('id') || params.get('doc_id') || params.get('document_id');
+    const requestedPageType = params.get('page_type') || 'home';
 
-    if (requestedId) documentId = requestedId;
-    if (window.VD5_CONFIG) apiOptions = Object.assign({}, window.VD5_CONFIG);
+    if (requestedId) {
+        documentId = requestedId;
+    }
+
+    if (window.VD5_CONFIG) {
+        apiOptions = Object.assign({}, window.VD5_CONFIG);
+    }
+
     apiOptions.storageKey = null;
     apiOptions.uploadUrl = apiOptions.uploadUrl || '/upload';
     apiOptions.onSave = function(state) {};
 
-    if (apiOptions.initialContent) editor.innerHTML = apiOptions.initialContent;
-
-    pushHistoryState();
-    updateHistoryButtons();
-
-    setEditingEnabled(isAdmin || apiOptions.editable === true);
+    // Инициализация контента
+    if (apiOptions.initialContent) {
+        editor.innerHTML = apiOptions.initialContent;
+        initializeAllVideos();
+        pushHistoryState();
+        updateHistoryButtons();
+        setEditingEnabled(isAdmin || apiOptions.editable === true);
+    } else if (requestedId) {
+        fetch('/api/' + encodeURIComponent(requestedPageType) + '_menu_text/' + encodeURIComponent(requestedId))
+            .then(function(r) { return r.ok ? r.json() : null; })
+            .then(function(data) {
+                if (data && data.success && typeof data.text === 'string') {
+                    editor.innerHTML = data.text;
+                    initializeAllVideos();
+                }
+                pushHistoryState();
+                updateHistoryButtons();
+                setEditingEnabled(isAdmin || apiOptions.editable === true);
+            })
+            .catch(function() {
+                pushHistoryState();
+                updateHistoryButtons();
+                setEditingEnabled(isAdmin || apiOptions.editable === true);
+            });
+    } else {
+        pushHistoryState();
+        updateHistoryButtons();
+        setEditingEnabled(isAdmin || apiOptions.editable === true);
+    }
 })();
 </script>
 </body>
