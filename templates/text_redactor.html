@@ -141,6 +141,31 @@
 </div>
 </div>
 </div>
+<div class="link-dialog-overlay" id="tableDialogOverlay">
+<div class="link-dialog table-dialog">
+<h3>Вставить таблицу</h3>
+<div class="table-dialog-row">
+<label for="tableColsInput">Столбцы</label>
+<div class="number-stepper">
+<button type="button" class="stepper-btn" data-stepper="cols" data-dir="-1" title="Меньше">−</button>
+<input type="number" id="tableColsInput" min="1" max="50" value="3" />
+<button type="button" class="stepper-btn" data-stepper="cols" data-dir="1" title="Больше">+</button>
+</div>
+</div>
+<div class="table-dialog-row">
+<label for="tableRowsInput">Строки</label>
+<div class="number-stepper">
+<button type="button" class="stepper-btn" data-stepper="rows" data-dir="-1" title="Меньше">−</button>
+<input type="number" id="tableRowsInput" min="1" max="100" value="3" />
+<button type="button" class="stepper-btn" data-stepper="rows" data-dir="1" title="Больше">+</button>
+</div>
+</div>
+<div class="dialog-actions">
+<button class="btn-cancel" id="tableDialogCancel">Отмена</button>
+<button class="btn-apply" id="tableDialogApply">Вставить</button>
+</div>
+</div>
+</div>
 <img class="drag-preview" id="dragPreview" alt="" />
 <div class="file-preview-tooltip" id="filePreviewTooltip">
 <div class="preview-header">
