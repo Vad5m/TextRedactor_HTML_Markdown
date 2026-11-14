@@ -1181,6 +1181,33 @@
         });
     }
 
+    function uploadBlobToServer(blob, opts) {
+        return new Promise((resolve, reject) => {
+            const fd = new FormData();
+            const name = opts && opts.fileName
+                ? opts.fileName.replace(/(\.\w+)?$/, (opts.original ? '$1' : '-preview$1'))
+                : 'image.png';
+            fd.append('file', blob, name);
+            fd.append('original', opts && opts.original ? '1' : '0');
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', apiOptions.uploadUrl || '/upload', true);
+            xhr.onload = () => {
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const resp = JSON.parse(xhr.responseText);
+                        resolve(resp);
+                    } catch (err) {
+                        reject(err);
+                    }
+                } else {
+                    reject(new Error('HTTP ' + xhr.status));
+                }
+            };
+            xhr.onerror = () => reject(new Error('network error'));
+            xhr.send(fd);
+        });
+    }
+
     function initVideoPlayerControls(videoWrapper) {
         const video = videoWrapper.querySelector('video');
         if (!video) return;
@@ -1348,10 +1375,51 @@
     function insertMediaFile(file, range) {
         const isImage = file.type.startsWith('image/');
         const isVideo = file.type.startsWith('video/');
+        const sizeStr = formatFileSize(file.size);
+
+        if (isImage && window.ImageEditor && file.type !== 'image/gif') {
+            const objectUrl = URL.createObjectURL(file);
+            const savedRange = range.cloneRange();
+
+            window.ImageEditor.open({
+                src: objectUrl,
+                fileName: file.name,
+                mimeType: file.type,
+                uploader: uploadBlobToServer,
+                onDone: function (result) {
+                    URL.revokeObjectURL(objectUrl);
+                    if (!result || result.cancelled) {
+                        return;
+                    }
+                    const img = document.createElement('img');
+                    img.src = result.url;
+                    img.alt = result.name;
+                    img.className = 'inserted-image';
+                    img.title = result.name;
+                    img.style.width = '300px';
+                    img.style.height = 'auto';
+                    img.style.display = 'block';
+                    img.style.marginLeft = '0';
+                    img.style.marginRight = 'auto';
+                    img.dataset.align = 'left';
+                    img.dataset.fileurl = result.url;
+
+                    const sel = window.getSelection();
+                    if (sel) sel.removeAllRanges();
+                    savedRange.deleteContents();
+                    savedRange.insertNode(img);
+                    placeCaretAfter(img);
+                    if (isEditingEnabled) selectImage(img);
+                    editor.focus();
+                    scheduleSave();
+                }
+            });
+            return;
+        }
+
         const placeholder = document.createElement('span');
         placeholder.className = 'inserted-file uploading';
         placeholder.contentEditable = 'false';
-        const sizeStr = formatFileSize(file.size);
         placeholder.innerHTML =
             '<span class="file-icon">' + getFileIcon(file) + '</span>' +
             '<span class="file-name">' + escapeHtml(file.name) + '</span>' +
@@ -1359,28 +1427,13 @@
         range.deleteContents();
         range.insertNode(placeholder);
         placeCaretAfter(placeholder);
+
         uploadFileToServer(file).then((resp) => {
             const fileUrl = resp.url;
             const fileName = resp.name || file.name;
             const fileSize = resp.size || file.size;
             const fileType = resp.type || file.type || '';
-            if (isImage) {
-                const img = document.createElement('img');
-                img.src = fileUrl;
-                img.alt = fileName;
-                img.className = 'inserted-image';
-                img.title = fileName;
-                img.style.width = '300px';
-                img.style.height = 'auto';
-                img.style.display = 'block';
-                img.style.marginLeft = '0';
-                img.style.marginRight = 'auto';
-                img.dataset.align = 'left';
-                img.dataset.fileurl = fileUrl;
-                placeholder.parentNode.replaceChild(img, placeholder);
-                placeCaretAfter(img);
-                if (isEditingEnabled) selectImage(img);
-            } else if (isVideo) {
+            if (isVideo) {
                 const videoWrapper = document.createElement('div');
                 videoWrapper.className = 'inserted-video';
                 videoWrapper.style.width = '400px';
@@ -1616,6 +1669,7 @@
 
     function handleDrop(e) {
         e.preventDefault();
+        e.stopPropagation();
         dragCounter = 0;
         isDragOver = false;
         dragPreview.classList.remove('show');
@@ -1623,13 +1677,14 @@
         removeDropPlaceholder();
         const files = e.dataTransfer && e.dataTransfer.files;
         if (!files || files.length === 0) return;
+
         let range = dropTargetRange;
         if (!range || !editor.contains(range.startContainer)) {
             range = document.createRange();
             range.selectNodeContents(editor);
             range.collapse(false);
         }
-        let container = range.startContainer;
+        const container = range.startContainer;
         if (container.nodeType === 1) {
             const fileParent = container.closest && container.closest('.inserted-file');
             if (fileParent) {
@@ -1642,8 +1697,20 @@
             range.selectNodeContents(editor);
             range.collapse(false);
         }
-        range.deleteContents();
+
         const filesArr = Array.from(files);
+        const firstFile = filesArr[0];
+        const isSingleImage = filesArr.length === 1 && firstFile.type.startsWith('image/') && firstFile.type !== 'image/gif';
+
+        if (isSingleImage && window.ImageEditor) {
+            range.deleteContents();
+            range.collapse(false);
+            insertMediaFile(firstFile, range);
+            dropTargetRange = null;
+            return;
+        }
+
+        range.deleteContents();
         filesArr.forEach((file, idx) => {
             if (idx === 0) {
                 insertMediaFile(file, range);
@@ -1662,12 +1729,15 @@
     editorContainer.addEventListener('dragleave', handleDragLeave);
     editorContainer.addEventListener('drop', handleDrop);
     document.addEventListener('dragenter', (e) => {
+        if (e.target.closest && e.target.closest('.img-editor-overlay')) return;
         e.preventDefault();
     });
     document.addEventListener('dragover', (e) => {
+        if (e.target.closest && e.target.closest('.img-editor-overlay')) return;
         e.preventDefault();
     });
     document.addEventListener('drop', (e) => {
+        if (e.target.closest && e.target.closest('.img-editor-overlay')) return;
         if (!editorContainer.contains(e.target)) {
             e.preventDefault();
         }
