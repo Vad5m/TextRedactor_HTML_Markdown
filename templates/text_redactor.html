@@ -160,9 +160,11 @@
     storageKey: "vd5_doc_{{ request.args.get('id', 'new') }}",
     uploadUrl: "{{ url_for('upload') }}",
     editable: {{ 'true' if request.args.get('admin') is not none else 'false' }},
-    initialContent: {{ (initial_content or '')|tojson }}
+    initialContent: {{ (initial_content or '')|tojson }},
+    dataPath: "{{ url_for('static', filename='data/') }}"
   };
 </script>
+<script src="{{ url_for('static', filename='image_redactor.js') }}"></script>
 <script src="{{ url_for('static', filename='text_redactor.js') }}"></script>
 </body>
 </html>
