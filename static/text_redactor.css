@@ -939,6 +939,72 @@ border: none;
 .link-dialog .dialog-actions .btn-cancel:hover { background: #e2e8f0; }
 .link-dialog .dialog-actions .btn-apply { background: #3b82f6; color: #ffffff; }
 .link-dialog .dialog-actions .btn-apply:hover { background: #2563eb; }
+
+.table-dialog-row {
+display: flex;
+align-items: center;
+justify-content: space-between;
+gap: 12px;
+margin-bottom: 14px;
+}
+.table-dialog-row label {
+margin-bottom: 0;
+font-size: 14px;
+font-weight: 500;
+color: #334155;
+flex-shrink: 0;
+}
+.number-stepper {
+display: flex;
+align-items: center;
+gap: 4px;
+}
+.number-stepper .stepper-btn {
+width: 34px;
+height: 34px;
+border-radius: 8px;
+border: 1px solid #cbd5e1;
+background: #f1f5f9;
+color: #0f172a;
+font-size: 18px;
+font-weight: 600;
+line-height: 1;
+cursor: pointer;
+display: flex;
+align-items: center;
+justify-content: center;
+padding: 0;
+transition: background 0.15s, border-color 0.15s;
+user-select: none;
+}
+.number-stepper .stepper-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+.number-stepper .stepper-btn:active { background: #cbd5e1; }
+.number-stepper input[type="number"] {
+width: 70px;
+padding: 7px 8px;
+border: 1px solid #cbd5e1;
+border-radius: 8px;
+font-size: 15px;
+font-family: inherit;
+color: #0f172a;
+text-align: center;
+outline: none;
+transition: border-color 0.15s, box-shadow 0.15s;
+margin-bottom: 0;
+-moz-appearance: textfield;
+appearance: textfield;
+}
+.number-stepper input[type="number"]::-webkit-outer-spin-button,
+.number-stepper input[type="number"]::-webkit-inner-spin-button {
+-webkit-appearance: none;
+margin: 0;
+}
+.number-stepper input[type="number"]:focus {
+border-color: #3b82f6;
+box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+.table-dialog .dialog-actions { margin-top: 6px; }
+
 @media (max-width: 600px) {
 .sidebar { width: 54px; height: 460px; padding: 10px 0; gap: 4px; left: -54px; }
 .sidebar.open { left: 0; }

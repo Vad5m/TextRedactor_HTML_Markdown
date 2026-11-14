@@ -19,6 +19,11 @@
     const topControls = document.getElementById('topControls');
     const undoBtn = document.getElementById('undoBtn');
     const redoBtn = document.getElementById('redoBtn');
+    const tableDialogOverlay = document.getElementById('tableDialogOverlay');
+    const tableColsInput = document.getElementById('tableColsInput');
+    const tableRowsInput = document.getElementById('tableRowsInput');
+    const tableDialogCancel = document.getElementById('tableDialogCancel');
+    const tableDialogApply = document.getElementById('tableDialogApply');
     const STORAGE_KEY = 'vd5_document';
     const VD5_FORMAT = 'vd5';
     const VD5_VERSION = 1;
@@ -45,6 +50,8 @@
     let dragCounter = 0;
     let linkInsertRange = null;
     let linkInsertMode = null;
+    let tableInsertRange = null;
+    let tableInsertMode = null;
     let dropTargetRange = null;
     let dropPlaceholder = null;
     let previewTooltipTimer = null;
@@ -835,6 +842,65 @@
         scheduleSave();
     });
 
+    function openTableDialog(mode, range) {
+        tableInsertMode = mode;
+        tableInsertRange = range;
+        tableColsInput.value = '3';
+        tableRowsInput.value = '3';
+        tableDialogOverlay.classList.add('show');
+        tableColsInput.focus();
+    }
+
+    function closeTableDialog() {
+        tableDialogOverlay.classList.remove('show');
+        tableInsertRange = null;
+        tableInsertMode = null;
+    }
+
+    function clampTableInput(input, min, max) {
+        let v = parseInt(input.value, 10);
+        if (!isFinite(v)) v = min;
+        if (v < min) v = min;
+        if (v > max) v = max;
+        input.value = String(v);
+        return v;
+    }
+
+    tableDialogOverlay.addEventListener('mousedown', (e) => {
+        if (e.target === tableDialogOverlay) closeTableDialog();
+    });
+    tableDialogCancel.addEventListener('click', closeTableDialog);
+    tableDialogOverlay.querySelectorAll('.stepper-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const which = btn.dataset.stepper;
+            const dir = parseInt(btn.dataset.dir, 10);
+            const input = which === 'cols' ? tableColsInput : tableRowsInput;
+            const max = which === 'cols' ? 50 : 100;
+            let v = parseInt(input.value, 10);
+            if (!isFinite(v)) v = 1;
+            v += dir;
+            if (v < 1) v = 1;
+            if (v > max) v = max;
+            input.value = String(v);
+        });
+    });
+    tableDialogApply.addEventListener('click', () => {
+        const cols = clampTableInput(tableColsInput, 1, 50);
+        const rows = clampTableInput(tableRowsInput, 1, 100);
+        const range = tableInsertRange || (function() {
+            const sel = window.getSelection();
+            if (sel.rangeCount > 0 && editor.contains(sel.anchorNode)) {
+                return sel.getRangeAt(0);
+            }
+            const r = document.createRange();
+            r.selectNodeContents(editor);
+            r.collapse(false);
+            return r;
+        })();
+        closeTableDialog();
+        insertTable(range, rows, cols);
+    });
+
     function formatText(action) {
         if (!isEditingEnabled) return;
         if (action === 'table') {
@@ -847,7 +913,7 @@
                 range.selectNodeContents(editor);
                 range.collapse(false);
             }
-            insertTable(range);
+            openTableDialog('format', range);
             return;
         }
         if (action === 'link') {
@@ -1014,13 +1080,14 @@
         const isToggle = toggleBtn.contains(e.target);
         const isCtx = contextMenu.contains(e.target);
         const isLinkDialog = linkDialogOverlay.contains(e.target);
+        const isTableDialog = tableDialogOverlay.contains(e.target);
         const isTopControls = topControls.contains(e.target);
         const isResize = e.target.closest && e.target.closest('.resize-handle');
         const isAlign = e.target.closest && e.target.closest('.align-handle');
         const isDelete = e.target.closest && e.target.closest('.delete-handle');
         const isTableBtn = e.target.closest && (e.target.closest('.table-add-col') || e.target.closest('.table-add-row') || e.target.closest('.table-delete-handle'));
         const isVideoControl = e.target.closest && e.target.closest('.video-controls-overlay');
-        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isTopControls && !isResize && !isAlign && !isDelete && !isTableBtn && !isVideoControl) {
+        if (!isToolbar && !isEditor && !isSidebar && !isToggle && !isCtx && !isLinkDialog && !isTableDialog && !isTopControls && !isResize && !isAlign && !isDelete && !isTableBtn && !isVideoControl) {
             hideFloatingToolbar();
             hideContextMenu();
             deselectImage();
@@ -1105,7 +1172,7 @@
                 }
                 contextMenuRange = null;
                 pendingInsertAction = null;
-                insertTable(range);
+                openTableDialog('context', range);
                 return;
             }
             if (action === 'link') {
@@ -2412,6 +2479,7 @@
                 if (floatingToolbar && floatingToolbar.parentNode) floatingToolbar.parentNode.removeChild(floatingToolbar);
                 if (contextMenu && contextMenu.parentNode) contextMenu.parentNode.removeChild(contextMenu);
                 if (linkDialogOverlay && linkDialogOverlay.parentNode) linkDialogOverlay.parentNode.removeChild(linkDialogOverlay);
+                if (tableDialogOverlay && tableDialogOverlay.parentNode) tableDialogOverlay.parentNode.removeChild(tableDialogOverlay);
                 if (saveIndicator && saveIndicator.parentNode) saveIndicator.parentNode.removeChild(saveIndicator);
                 if (topControls && topControls.parentNode) topControls.parentNode.removeChild(topControls);
                 if (sidebar && sidebar.parentNode) sidebar.parentNode.removeChild(sidebar);
