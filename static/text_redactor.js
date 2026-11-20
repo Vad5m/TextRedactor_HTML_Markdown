@@ -162,13 +162,14 @@
         handle.addEventListener('mousedown', (e) => {
             e.preventDefault();
             e.stopPropagation();
-            const target = selectedImage || selectedVideo || selectedLink || selectedTable;
+            const target = selectedImage || selectedVideo || selectedLink || selectedTable || selectedFile;
             if (!target) return;
             target.remove();
             deselectImage();
             deselectVideo();
             deselectLink();
             deselectTable();
+            deselectFile();
             scheduleSave();
         });
         document.body.appendChild(handle);
@@ -265,6 +266,7 @@
             selectedFile.classList.remove('selected');
             selectedFile = null;
         }
+        hideHandles();
     }
 
     function deselectLink() {
@@ -306,7 +308,10 @@
     }
 
     function selectFile(fileEl) {
-        if (selectedFile === fileEl) return;
+        if (selectedFile === fileEl) {
+            showDeleteOnly(fileEl);
+            return;
+        }
         deselectFile();
         deselectImage();
         deselectVideo();
@@ -314,6 +319,7 @@
         deselectLink();
         selectedFile = fileEl;
         fileEl.classList.add('selected');
+        showDeleteOnly(fileEl);
     }
 
     function selectLink(linkEl) {
@@ -671,6 +677,7 @@
     function repositionHandles() {
         if (selectedImage) showHandles(selectedImage);
         if (selectedVideo) showHandles(selectedVideo);
+        if (selectedFile) showDeleteOnly(selectedFile);
         if (selectedLink) showDeleteOnly(selectedLink);
         if (selectedTable) showTableAddButtons(selectedTable);
     }
@@ -1540,6 +1547,7 @@
                     '<span class="file-size">' + formatFileSize(fileSize) + '</span>';
                 placeholder.parentNode.replaceChild(fileEl, placeholder);
                 placeCaretAfter(fileEl);
+                if (isEditingEnabled) selectFile(fileEl);
             }
             editor.focus();
             scheduleSave();
@@ -1915,6 +1923,7 @@
         }
         const fileEl = target.closest && target.closest('.inserted-file');
         if (fileEl) {
+            selectFile(fileEl);
             startInternalDrag(e, fileEl, 'file');
             return;
         }
